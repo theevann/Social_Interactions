@@ -2,9 +2,8 @@
     nextStep,
     start,
     pause,
-    csvHeader,
-    showLog,
-    logLevel;
+    setAnimationStep,
+    setThreshold;
 
 (function(){
     
@@ -13,8 +12,8 @@
     csvHeader = "";
     
     // Log properties
-    showLog = true; // Show log
-    logLevel = 'limited'; // You can choose 'all' / 'limited'
+    showLog = true; // Show log (default true)
+    logLevel = 'limited'; // You can choose 'all' / 'limited' (default 'limited')
     
     //Parameters - may be modified
     var width = 1500,
@@ -27,6 +26,7 @@
         maxLinkSize = 4, // The stroke-width (in pixel probably)
         maxNodeSize = 50, // In pixel
         minNodeSize = 5, // In pixel
+        threshold = 0.7, // 0 : show all links / 1 : show no link
         
         // THIS DEPENDS ON THE DATASET:
         currentTime = 0, // Beggining of the time-window
@@ -37,7 +37,7 @@
         animate = false, // To start animation
         animationStep = 200, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)
         
-        animationOnChanging = true; // Show a circle widening/shrinking to the position of the created/removed node
+        animationOnChanging = false; // Show a circle widening/shrinking to the position of the created/removed node
     
     /*
     *   == PROGRAM BEGGINING ==
@@ -45,24 +45,27 @@
     */
     
     //Program variables - do not touch
-    var link, node, computedData, allNodesId, allLinksId, svg, force;
+    var computedData, node, nodesId = [], allNodesId = [], link, linksId = [], allLinksId = [], svg, force;
 
     var currentNodeMaxWeight = 0,
         currentLinkMaxWeight = 0,
         currentNodes = [], // Nodes in window
-        currentLinks = []; // Links in window
+        currentLinks = [], // Links in window
+        displayedLinks = []; // Links actually displayed (some are not due to threshold)
         
         
     svg = d3.select("#graph").append("svg")
         .attr("width", width)
         .attr("height", height);
 
+    // Change it only if you know what you're doing
     force = d3.layout.force()
         .gravity(0.2)
         .linkDistance(function(d){return maxLinkDistance + d.currentW / currentLinkMaxWeight * (minLinkDistance - maxLinkDistance);})
         .linkStrength(0.5)
         .friction(0.5)
-        .charge(-2000)
+        .charge(-1000-1000*(1 - threshold))
+        .theta(0.5)
         .size([width, height]); 
     
     start = function () {
@@ -77,7 +80,15 @@
     nextStep = function () {
         animate = false;
         update();
-    };   
+    };
+
+    setThreshold = function (_) {
+        threshold = _;
+    };
+    
+    setAnimationStep = function (_) {
+        animationStep = _;
+    };
     
     init = function(filePath1, filePath2){
         var data;
@@ -88,7 +99,7 @@
         allLinksId = computedData.links.map(function (d) {return d.id;});
         
         link = svg.selectAll(".link")
-            .data(currentLinks, function(d) {return d.id;});
+            .data(displayedLinks, function(d) {return d.id;});
 
         node = svg.selectAll(".node")
             .data(currentNodes, function(d) {return d.id;});
@@ -121,7 +132,7 @@
 
         
         //Updating Links
-        link = link.data(currentLinks, function(d) {return d.id;});
+        link = link.data(displayedLinks, function(d) {return d.id;});
         
         link.enter().insert("line", ".node")
             .attr("class", "link");
@@ -140,6 +151,7 @@
             .attr("height", getNodeSize);
         
         node.selectAll("text")
+            .attr("dx", function (d) {return 5 + getNodeSize(d) / 2; })
             .text(function(d) { return d.id + " (" + d.currentW + ")"; });
         
         var newNode = node.enter();
@@ -198,7 +210,7 @@
         //Update the force
         force
             .nodes(currentNodes)
-            .links(currentLinks);
+            .links(displayedLinks);
         //Restart it
         force.start();
         
@@ -216,8 +228,8 @@
     };
   
     var updateCurrentData = function (startTime, endTime, allData) { // TO DO : update link weight too
-        var linkId = currentLinks.map(function (d) {return d.id;}),
-            nodeId = currentNodes.map(function (d) {return d.id;}),
+        var /*linksId = currentLinks.map(function (d) {return d.id;}),
+            nodesId = currentNodes.map(function (d) {return d.id;}),*/
             j = 0,
             n1 = 0,
             n2 = 0,
@@ -226,51 +238,51 @@
             changingW = 0;
             
         allData.links.forEach(function(d){
-            j = linkId.indexOf(d.id);
+            j = linksId.indexOf(d.id);
             changingW = -d.currentW + (d.currentW = (d3.bisectRight(d.timestamps, endTime) - d3.bisectLeft(d.timestamps, startTime))); // Compute the difference between previous and new weight of the link on the time window
             
             if (d.currentW !== 0 && j === -1) { // If the link has to exist but doesn't exist
                     currentLinks.push(d);
-                    linkId.push(d.id);
+                    linksId.push(d.id);
                     log("Link created (" + d.id + ") : " + d.sourceId + " <=> " + d.targetId);
                     
                     //Then we have to add the nodes if they didn't exist
-                    n1 = nodeId.indexOf(d.sourceId);                    
+                    n1 = nodesId.indexOf(d.sourceId);                    
                     if (n1 === -1) {
                         idx = allNodesId.indexOf(d.sourceId);
                         newNode = allData.nodes[idx];
                         currentNodes.push(newNode);
-                        nodeId.push(d.sourceId);
+                        nodesId.push(d.sourceId);
                         log("Node created : " + d.sourceId);
                     }
                     
-                    n2 = nodeId.indexOf(d.targetId);
+                    n2 = nodesId.indexOf(d.targetId);
                     if (n2 === -1) {
                         idx = allNodesId.indexOf(d.targetId);
                         newNode = allData.nodes[idx];
                         currentNodes.push(newNode);
-                        nodeId.push(d.targetId);
+                        nodesId.push(d.targetId);
                         log("Node created : " + d.targetId);
                     }
                   
             } 
             else if (d.currentW === 0 && j !== -1) { // If the link shouldn't exist but exist
                 currentLinks.splice(j,1);
-                linkId.splice(j,1);
+                linksId.splice(j,1);
                 log("Link removed (" + d.id + ") : " + d.sourceId + " <=> " + d.targetId);
                 
                 //Then we have to remove the node and update the current Weight
-                n1 = nodeId.indexOf(d.sourceId);              
+                n1 = nodesId.indexOf(d.sourceId);              
                 if (currentNodes[n1].currentW + changingW === 0) { // if the node is linked with only one other node, then remove it
                     currentNodes.splice(n1,1);
-                    nodeId.splice(n1,1);
+                    nodesId.splice(n1,1);
                     log("Node removed : " + d.sourceId);
                 }
                 
-                n2 = nodeId.indexOf(d.targetId); 
+                n2 = nodesId.indexOf(d.targetId); 
                 if (currentNodes[n2].currentW + changingW === 0) { // Idem
                     currentNodes.splice(n2,1);
-                    nodeId.splice(n2,1);
+                    nodesId.splice(n2,1);
                     log("Node removed : " + d.targetId);
                 }
             }
@@ -281,15 +293,26 @@
             allData.nodes[n2].currentW += changingW;
         });
         
-        //Link the source and target with the current position if the nodes in the node array
-        currentLinks.forEach(function(d){
-            d.source = nodeId.indexOf(d.sourceId);
-            d.target = nodeId.indexOf(d.targetId);
-        });
-        
         //Update the current maximum weight
         currentNodeMaxWeight = d3.max(currentNodes, function(d) {return d.currentW;});
         currentLinkMaxWeight = d3.max(currentLinks, function(d) {return d.currentW;});
-
+        
+        //Link the source and target with the current position if the nodes in the node array and decided if we have to display it
+        currentLinks.forEach(function(d){
+            d.source = nodesId.indexOf(d.sourceId);
+            d.target = nodesId.indexOf(d.targetId);
+            d.normalizedW = computeNormalizedLinkWeight(d);   
+        });
+        
+        displayedLinks = currentLinks.filter(function (d) {
+            return d.normalizedW >= threshold;
+        })
     };
+    
+    var computeNormalizedLinkWeight = function (link) {
+        var nodesValue = (currentNodes[link.source].currentW + currentNodes[link.target].currentW) / (2 * currentNodeMaxWeight);
+        var linkValue = link.currentW / currentLinkMaxWeight;
+        return (linkValue + nodesValue) / 2;
+    }
+    
 })();
