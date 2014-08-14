@@ -26,14 +26,14 @@
         maxNodeSize = 50, // In pixel
         minNodeSize = 5, // In pixel
         
-        // This depends on the dataset:
+        // THIS DEPENDS ON THE DATASET:
         currentTime = 0, // Beggining of the time-window
         step = 20,   // Step time the time-window is moving
         windowSize = 300, // TIME-Window size 
         
         // Animated graph properties :
         animate = false, // To start animation
-        animationStep = 100, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)
+        animationStep = 200, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)
         
         animationOnChanging = true; // Show a circle widening/shrinking to the position of the created/removed node
     
