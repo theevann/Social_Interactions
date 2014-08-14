@@ -20,7 +20,7 @@ Parameters are briefly explained there.
 
 CheckList :
 - Put a header in your csv file or declare it in main.js !
-- Set animate = true to see animation
+- Set animate = true to see animation, it is however reccomended to leave it to false and to start manually the animation with start()
 - Change the time window size, currentTime and step to have a 'nice' animation
 - Open web console to see logs
 
