@@ -35,9 +35,9 @@
         
         // Animated graph properties :
         animate = false, // To start animation
-        animationStep = 200, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)
+        animationStep = 1000, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)
         
-        animationOnChanging = false; // Show a circle widening/shrinking to the position of the created/removed node
+        animationOnChanging = true; // Show a circle widening/shrinking to the position of the created/removed node
     
     /*
     *   == PROGRAM BEGGINING ==
@@ -46,7 +46,7 @@
     
     //Program variables - do not touch
     var computedData, node, nodesId = [], allNodesId = [], link, linksId = [], allLinksId = [], svg, force;
-
+    
     var currentNodeMaxWeight = 0,
         currentLinkMaxWeight = 0,
         currentNodes = [], // Nodes in window
@@ -60,13 +60,15 @@
 
     // Change it only if you know what you're doing
     force = d3.layout.force()
-        .gravity(0.2)
+        .gravity(0.1 + currentNodes.length / 50 * 0.1) // Or simply set a constant value like 0.2
         .linkDistance(function(d){return maxLinkDistance + d.currentW / currentLinkMaxWeight * (minLinkDistance - maxLinkDistance);})
         .linkStrength(0.5)
         .friction(0.5)
         .charge(-1000-1000*(1 - threshold))
         .theta(0.5)
         .size([width, height]); 
+    
+    f = force;
     
     start = function () {
         animate = true;
@@ -88,6 +90,10 @@
     
     setAnimationStep = function (_) {
         animationStep = _;
+    };
+    
+    setWindowSize = function (_) {
+        windowSize = _;
     };
     
     init = function(filePath1, filePath2){
@@ -129,6 +135,9 @@
         updateCurrentData(currentTime, (currentTime + windowSize), computedData);        
         //Move the window
         currentTime += step;
+        
+        //Update force gravity
+        force.gravity(0.1 + currentNodes.length / 50 * 0.12)
 
         
         //Updating Links
@@ -306,13 +315,13 @@
         
         displayedLinks = currentLinks.filter(function (d) {
             return d.normalizedW >= threshold;
-        })
+        });
     };
     
     var computeNormalizedLinkWeight = function (link) {
         var nodesValue = (currentNodes[link.source].currentW + currentNodes[link.target].currentW) / (2 * currentNodeMaxWeight);
         var linkValue = link.currentW / currentLinkMaxWeight;
         return (linkValue + nodesValue) / 2;
-    }
+    };
     
 })();
