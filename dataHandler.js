@@ -76,7 +76,9 @@
         data.links = JSON.parse(file2);
         
         //The JSON FILES are given with the incorrect attribute 'weight' while programm is expecting 'w'
-        data.nodes.forEach(function (d) {d.w = d.weight; delete d.weight;});
+        data.nodes.forEach(function (d) {d.id = +d.id; d.w = d.weight; delete d.weight;});
+        //The JSON FILES are given with the incorrect attributes 'id1' and 'id2' while program is expecting 'sourceId' & 'targetId'
+        data.links.forEach(function (d) { d.timestamps.forEach(function(t,i){d.timestamps[i] = +d.timestamps[i];}); d.sourceId = +d.id1; d.targetId = +d.id2; delete d.id1; delete d.id2;});
         
         return data;
     };
