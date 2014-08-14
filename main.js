@@ -1,9 +1,16 @@
-﻿var init,
-    nextStep,
-    start,
-    pause,
-    setAnimationStep,
-    setThreshold;
+﻿/*
+ * These are global function you can call from index.html or the console
+ * 
+ * name // explanation - arguments type
+ */
+ 
+var init, // Call it only once (with the filepath as arguments) at the beggining to compute the data - String, String
+    nextStep, // Trigger the next step computation & pause animation
+    start, // Launch animation
+    pause, // Pause animation
+    setAnimationStep, // Set animation step - Integer
+    setThreshold, // Set threshold - Integer in [0,1]
+    setWindowSize; // Set the time-window size - Integer
 
 (function(){
     
@@ -35,10 +42,9 @@
         
         // Animated graph properties :
         animate = false, // To start animation
-        animationStep = 1000, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)
-        
+        animationStep = 1000, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)  
         animationOnChanging = true; // Show a circle widening/shrinking to the position of the created/removed node
-    
+
     /*
     *   == PROGRAM BEGGINING ==
     *   written by Evann Courdier
@@ -60,7 +66,7 @@
 
     // Change it only if you know what you're doing
     force = d3.layout.force()
-        .gravity(0.1 + currentNodes.length / 50 * 0.1) // Or simply set a constant value like 0.2
+        .gravity(0.1)
         .linkDistance(function(d){return maxLinkDistance + d.currentW / currentLinkMaxWeight * (minLinkDistance - maxLinkDistance);})
         .linkStrength(0.5)
         .friction(0.5)
@@ -137,9 +143,8 @@
         currentTime += step;
         
         //Update force gravity
-        force.gravity(0.1 + currentNodes.length / 50 * 0.12)
+        force.gravity(0.1 + currentNodes.length / 50 * 0.12);
 
-        
         //Updating Links
         link = link.data(displayedLinks, function(d) {return d.id;});
         
