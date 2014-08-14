@@ -94,7 +94,8 @@ var csv = true,
         var nodes = [],
             links = [],
             nodesId = [],
-            linksId = [];
+            linksId = [],
+            tenth = Math.floor(data.length / 10);
         
         //LINKS ARE NOT ORIENTED
         log("Computing data...", true);
@@ -104,8 +105,8 @@ var csv = true,
             var indexNodes = [nodesId.indexOf(d.id1),nodesId.indexOf(d.id2)];
             var indexLinks = [linksId.indexOf(d.id1 + "-" + d.id2),linksId.indexOf(d.id2 + "-" + d.id1)];
             
-            if(i%1000 === 0)
-                log(i + " computed over " + data.length, true);
+            if(i%tenth === 0)
+                log(Math.floor(i/tenth)*10 + "% computed over " + data.length, true);
             
             for(var j = 0 ; j < 2 ; j++){
                 if (indexNodes[j] >= 0) {
