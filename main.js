@@ -8,7 +8,8 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     nextStep, // Trigger the next step computation & pause animation
     start, // Launch animation
     pause, // Pause animation
-    setAnimationStep, // Set animation step - Integer
+    setAnimationStep, // Set animation step : in real life - Integer
+    setTimeStep, // Set time step : in the readen file - Integer
     setThreshold, // Set threshold - Integer in [0,1]
     setCurrentTime, // Set the current time (different from the clock one  : clock = currentTime + windowSize) - Integer
     setAnimationOnChanging, // Circle popping when apparition/disparition - boolean
@@ -31,10 +32,11 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         minLinkDistance = 200, // In pixel
         maxLinkDistance = 400, // In pixel
         
-        minLinkSize = 0.5, // The stroke-width (in pixel probably)
-        maxLinkSize = 8, // The stroke-width (in pixel probably)
+        minLinkSize = 0.5, // The stroke-width in pixel
+        maxLinkSize = 8, // The stroke-width in pixel
         maxNodeSize = 50, // In pixel
         minNodeSize = 5, // In pixel
+        poppingCircleSize = 75, // In pixel
         threshold = 0.7, // 0 : show all links / 1 : show no link
         
         // THIS DEPENDS ON THE DATASET:
@@ -62,54 +64,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         currentLinkMaxWeight = 0,
         currentNodes = [], // Nodes in window
         currentLinks = [], // Links in window
-        displayedLinks = []; // Links actually displayed (some are not due to threshold)
-        
-
-    // Change it only if you know what you're doing
-    force = d3.layout.force()
-        .gravity(0.1)
-        .linkDistance(function(d){return maxLinkDistance + d.currentW / currentLinkMaxWeight * (minLinkDistance - maxLinkDistance);})
-        .linkStrength(0.5)
-        .friction(0.5)
-        .charge(-1000-1000*(1 - threshold))
-        .theta(0.5)
-        .size([width, height]); 
-    
-    f = force;
-    
-    start = function () {
-        animate = true;
-        update();
-    };
-    
-    pause = function () {
-        animate = false;
-    };
-
-    nextStep = function () {
-        animate = false;
-        update();
-    };
-
-    setThreshold = function (_) {
-        threshold = _;
-    };
-    
-    setAnimationStep = function (_) {
-        animationStep = _;
-    };
-    
-    setWindowSize = function (_) {
-        windowSize = _;
-    };
-    
-    setCurrentTime = function (_) {
-        currentTime = _;
-    };
-    
-    setAnimationOnChanging = function (_) {
-        animationOnChanging = _;
-    };
+        displayedLinks = []; // Links actually displayed (some are not due to threshold) 
     
     init = function(filePath1, filePath2){
         var data;
@@ -132,6 +87,16 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         node = svg.selectAll(".node")
             .data(currentNodes, function(d) {return d.id;});
         
+        // Change it only if you know what you're doing
+        force = d3.layout.force()
+            .gravity(0.1)
+            .linkDistance(function(d){return maxLinkDistance + d.currentW / currentLinkMaxWeight * (minLinkDistance - maxLinkDistance);})
+            .linkStrength(0.5)
+            .friction(0.5)
+            .charge(-1000-1000*(1 - threshold))
+            .theta(0.5)
+            .size([width, height]); 
+    
         //Define the tick method to call
         force.on("tick", function() {
             link.attr("x1", function(d) { return d.source.x; })
@@ -143,12 +108,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         });
         
         log("Displaying graph...", true);
-        
-        setTimeout(
-            function() { update(); },
-            2000
-        );
-
+        update();
     }; 
  
     var update = function () {
@@ -163,7 +123,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
                 hour = Math.floor((realTime % 86400) / 3600),
                 min = Math.floor((realTime % 3600) / 60),
                 sec = Math.floor(realTime % 60);
-            clock.text("Day " + day + "  " + hour + ":" + (min < 10 ? "0" : "") + min + ":" + (sec < 10 ? "0" : "") + sec);
+            clock.text("Day " + day + "  " + hour + ":" + (min < 10 ? "0" : "") + min + ":" + (sec < 10 ? "0" : "") + sec);
         }
         
        //Move the window
@@ -214,26 +174,22 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
               .text(function(d) { return d.id + " (" + d.currentW + ")"; });
         
         if(animationOnChanging){
-            newNode.append("circle")
-                .attr("fill","#bbb")
-                .attr("stroke","none")
-                .attr("cx",0)
-                .attr("cy",0)
-                .attr("r",0)
+            newNode.append("circle").attr("class","popIn")
+                .attr("cx", 0)
+                .attr("cy", 0)
+                .attr("r", 0)
                 .attr("opacity",0.7)
                 .transition().duration(800)
-                .attr("r", 150)
+                .attr("r", poppingCircleSize)
                 .attr("opacity",0)
                 .each("end",function() {
                     d3.select(this).remove();
                 });
             
-            node.exit().append("circle")
-                .attr("fill","#bbb")
-                .attr("stroke","none")
-                .attr("cx",0)
-                .attr("cy",0)
-                .attr("r",150)
+            node.exit().append("circle").attr("class","popOut")
+                .attr("cx", 0)
+                .attr("cy", 0)
+                .attr("r", poppingCircleSize)
                 .attr("opacity",0)
                 .transition().duration(800)
                 .attr("r", 0)
@@ -269,9 +225,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     };
   
     var updateCurrentData = function (startTime, endTime, allData) { // TO DO : update link weight too
-        var /*linksId = currentLinks.map(function (d) {return d.id;}),
-            nodesId = currentNodes.map(function (d) {return d.id;}),*/
-            j = 0,
+        var j = 0,
             n1 = 0,
             n2 = 0,
             idx = 0,
@@ -354,6 +308,48 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         var nodesValue = (currentNodes[link.source].currentW + currentNodes[link.target].currentW) / (2 * currentNodeMaxWeight);
         var linkValue = link.currentW / currentLinkMaxWeight;
         return (linkValue + nodesValue) / 2;
+    };
+    
+    /*
+    * All setters
+    */
+    
+    start = function () {
+        animate = true;
+        update();
+    };
+    
+    pause = function () {
+        animate = false;
+    };
+
+    nextStep = function () {
+        animate = false;
+        update();
+    };
+
+    setThreshold = function (_) {
+        threshold = _;
+    };
+    
+    setTimeStep = function (_) {
+        step = _;
+    };
+    
+    setAnimationStep = function (_) {
+        animationStep = _;
+    };
+    
+    setWindowSize = function (_) {
+        windowSize = _;
+    };
+    
+    setCurrentTime = function (_) {
+        currentTime = _;
+    };
+    
+    setAnimationOnChanging = function (_) {
+        animationOnChanging = _;
     };
     
 })();
