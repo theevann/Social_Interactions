@@ -1,5 +1,7 @@
 ﻿var init,
-    update,
+    nextStep,
+    start,
+    pause,
     csvHeader,
     showLog,
     logLevel;
@@ -62,7 +64,21 @@
         .friction(0.5)
         .charge(-2000)
         .size([width, height]); 
+    
+    start = function () {
+        animate = true;
+        update();
+    };
+    
+    pause = function () {
+        animate = false;
+    };
 
+    nextStep = function () {
+        animate = false;
+        update();
+    };   
+    
     init = function(filePath1, filePath2){
         var data;
         data = (filePath2 !== undefined) ? getComputedData(filePath1, filePath2) : getData(filePath1); // Load file(s)
@@ -96,7 +112,7 @@
 
     }; 
  
-    update = function () {
+    var update = function () {
         force.stop();
         //Update the currentLinks and currentNodes variables with the new window
         updateCurrentData(currentTime, (currentTime + windowSize), computedData);        
