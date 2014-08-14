@@ -10,6 +10,8 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     pause, // Pause animation
     setAnimationStep, // Set animation step - Integer
     setThreshold, // Set threshold - Integer in [0,1]
+    setCurrentTime, // Set the current time (different from the clock one  : clock = currentTime + windowSize) - Integer
+    setAnimationOnChanging, // Circle popping when apparition/disparition - boolean
     setWindowSize; // Set the time-window size - Integer
 
 (function(){
@@ -23,35 +25,38 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     logLevel = 'limited'; // You can choose 'all' / 'limited' (default 'limited')
     
     //Parameters - may be modified
-    var width = 1500,
-        height = 800,
+    var width = 1580,
+        height = 790,
         
         minLinkDistance = 200, // In pixel
         maxLinkDistance = 400, // In pixel
         
         minLinkSize = 0.5, // The stroke-width (in pixel probably)
-        maxLinkSize = 4, // The stroke-width (in pixel probably)
+        maxLinkSize = 8, // The stroke-width (in pixel probably)
         maxNodeSize = 50, // In pixel
         minNodeSize = 5, // In pixel
         threshold = 0.7, // 0 : show all links / 1 : show no link
         
         // THIS DEPENDS ON THE DATASET:
-        currentTime = 0, // Beggining of the time-window
-        step = 20,   // Step time the time-window is moving
-        windowSize = 300, // TIME-Window size 
+        currentTime = -40, // Beggining of the time-window
+        step = 60,   // Step time the time-window is moving
+        windowSize = 1000, // TIME-Window size 
         
         // Animated graph properties :
         animate = false, // To start animation
-        animationStep = 1000, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)  
-        animationOnChanging = true; // Show a circle widening/shrinking to the position of the created/removed node
-
+        animationStep = 100, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)  
+        animationOnChanging = true, // Show a circle widening/shrinking to the position of the created/removed node
+        showClock = true;
+        
+        startingTimeSec = 8 * 3600; // Time the conference started
+        
     /*
     *   == PROGRAM BEGGINING ==
     *   written by Evann Courdier
     */
     
     //Program variables - do not touch
-    var computedData, node, nodesId = [], allNodesId = [], link, linksId = [], allLinksId = [], svg, force;
+    var computedData, node, nodesId = [], allNodesId = [], link, linksId = [], allLinksId = [], svg, force, clock;
     
     var currentNodeMaxWeight = 0,
         currentLinkMaxWeight = 0,
@@ -59,10 +64,6 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         currentLinks = [], // Links in window
         displayedLinks = []; // Links actually displayed (some are not due to threshold)
         
-        
-    svg = d3.select("#graph").append("svg")
-        .attr("width", width)
-        .attr("height", height);
 
     // Change it only if you know what you're doing
     force = d3.layout.force()
@@ -102,6 +103,14 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         windowSize = _;
     };
     
+    setCurrentTime = function (_) {
+        currentTime = _;
+    };
+    
+    setAnimationOnChanging = function (_) {
+        animationOnChanging = _;
+    };
+    
     init = function(filePath1, filePath2){
         var data;
         data = (filePath2 !== undefined) ? getComputedData(filePath1, filePath2) : getData(filePath1); // Load file(s)
@@ -109,6 +118,13 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         computedData = csv ? computeData(data) : data; // Compute it if necessary (i.e if it's not json)
         allNodesId = computedData.nodes.map(function (d) {return d.id;});
         allLinksId = computedData.links.map(function (d) {return d.id;});
+        
+        d3.select("#graph").selectAll("svg").remove();
+        svg = d3.select("#graph").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+        
+        clock = d3.select("#clock");
         
         link = svg.selectAll(".link")
             .data(displayedLinks, function(d) {return d.id;});
@@ -130,7 +146,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         
         setTimeout(
             function() { update(); },
-            3000
+            2000
         );
 
     }; 
@@ -139,7 +155,18 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         force.stop();
         //Update the currentLinks and currentNodes variables with the new window
         updateCurrentData(currentTime, (currentTime + windowSize), computedData);        
-        //Move the window
+        
+        //Update clock
+        if (showClock) {
+            var realTime = currentTime + windowSize + startingTimeSec,
+                day = Math.floor(realTime / 86400) + 1,
+                hour = Math.floor((realTime % 86400) / 3600),
+                min = Math.floor((realTime % 3600) / 60),
+                sec = Math.floor(realTime % 60);
+            clock.text("Day " + day + "  " + hour + ":" + (min < 10 ? "0" : "") + min + ":" + (sec < 10 ? "0" : "") + sec);
+        }
+        
+       //Move the window
         currentTime += step;
         
         //Update force gravity

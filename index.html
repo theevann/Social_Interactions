@@ -1,7 +1,7 @@
 ﻿<!DOCTYPE html>
 <html>
 	<head>
-		<title>Test file : Charts</title>
+		<title>Social Interaction</title>
         <script src="http://d3js.org/d3.v3.js"></script>
 		<style>
             .link {
@@ -12,17 +12,45 @@
               pointer-events: none;
               font: 10px sans-serif;
             }
+            
+            #clock{
+                position : absolute;
+                display : inline-block;
+                font-size: 4em;
+                font-family : Sans-Serif;
+                color: #000;
+                opacity : 0.7;
+                padding : 5px 5px;
+                border-radius : 10px;
+                left : 1em;
+                top: 0.5em;
+                background-color: white;
+                z-index : 10;
+            }
+            
+            #clock.video{
+                left : 37%;
+            }
+            
         </style>
 	</head>
 
 <body>
-    <div id="graph" style="width:100%;margin:auto;height:800px"></div>
+    <div id="clock" class="video"></div>
+    <div id="graph" style="width:100%;margin:auto;height:790px"></div>
     
     <script src="dataHandler.js"></script>
     <script src="main.js"></script>
     <script>    
-        //init("contact_list.csv");
+//*
+        init("contact_list.csv");
+        /*/
         init("nodes.json","edges.json");
+        //*/
+        
+        /*
+        start();
+        //*/
     </script>
 </body>
 <html>
