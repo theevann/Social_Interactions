@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title>Test file : Charts</title>
-        <script src="http://d3js.org/d3.v3.min.js"></script>
+        <script src="http://d3js.org/d3.v3.js"></script>
 		<style>
             .link {
               stroke: #ccc;
@@ -17,7 +17,12 @@
 
 <body>
     <div id="graph" style="width:100%;margin:auto;height:800px"></div>
-    <script src="computeData.js"></script>
+    
+    <script src="dataHandler.js"></script>
     <script src="main.js"></script>
+    <script>    
+        init("contact_list.cs");
+        //init("nodes.json","links.json");
+    </script>
 </body>
 <html>
