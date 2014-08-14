@@ -8,6 +8,7 @@
     
     getData = function (filePath) {
         var data, file;
+        log("Loading file : '" + filePath + "'",true);
         xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET",filePath,false);
         xmlhttp.overrideMimeType('text/plain');
@@ -52,12 +53,14 @@
     
     getComputedData = function (filePath1, filePath2) {
         var data = {}, file1, file2;
+        log("Loading file : '" + filePath1 + "'",true);
         var xmlhttp1 = new XMLHttpRequest();
         xmlhttp1.open("GET",filePath1,false);
         xmlhttp1.overrideMimeType('text/plain');
         xmlhttp1.send(null);
         file1 = xmlhttp1.responseText;
         
+        log("Loading file : '" + filePath2 + "'",true);
         var xmlhttp2 = new XMLHttpRequest();
         xmlhttp2.open("GET",filePath2,false);
         xmlhttp2.overrideMimeType('text/plain');
