@@ -1,7 +1,11 @@
 ﻿var computeData,
     getData,
-    log,
-    csv = true;
+    log;
+    
+var csv = true,
+    csvHeader = '',
+    showLog = true,
+    logLevel = 'limited';
 
 (function(){
     var idCounter = 0; // Give unique id to link
