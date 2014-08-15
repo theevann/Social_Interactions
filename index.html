@@ -6,17 +6,18 @@
         <script src="http://d3js.org/d3.v3.js"></script>
 	</head>
 <body>
-    <div id="clock" class="video"></div>
+    <div id="clock" class=""></div>
     <div id="graph" style="width:100%;margin:auto;height:790px"></div>
     
     <script src="dataHandler.js"></script>
     <script src="main.js"></script>
-    <script>    
+    <script>
         //*
-        init("contact_list.csv");
+        init("data/contact_list.csv");
         /*/
-        init("nodes.json","edges.json");
+        init("data/nodes.json","data/edges.json");
         //*/
+        restart();
     </script>
 </body>
 <html>

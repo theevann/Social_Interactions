@@ -6,7 +6,8 @@
  
 var init, // Call it only once (with the filepath as arguments) at the beggining to compute the data - String, String
     nextStep, // Trigger the next step computation & pause animation
-    start, // Launch animation
+    start, // Launch animation from the current Time
+    restart, // Launch animation from the beggining of timesteps
     pause, // Pause animation
     setAnimationStep, // Set animation step : in real life - Integer
     setTimeStep, // Set time step : in the readen file - Integer
@@ -37,20 +38,23 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         maxNodeSize = 50, // In pixel
         minNodeSize = 5, // In pixel
         poppingCircleSize = 75, // In pixel
-        threshold = 0.7, // 0 : show all links / 1 : show no link
+        threshold = 0.6, // 0 : show all links / 1 : show no link
         
         // THIS DEPENDS ON THE DATASET:
-        currentTime = -40, // Beggining of the time-window
-        step = 60,   // Step time the time-window is moving
+        currentTime = 0, // Beggining of the time-window
+        step = 20,   // Step time the time-window is moving
         windowSize = 1000, // TIME-Window size 
+        autosettings = false,
+        
+        useGroup = true,
         
         // Animated graph properties :
         animate = false, // To start animation
-        animationStep = 100, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)  
+        animationStep = 200, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)  
         animationOnChanging = true, // Show a circle widening/shrinking to the position of the created/removed node
         showClock = true;
         
-        startingTimeSec = 8 * 3600; // Time the conference started
+        startingTimeSec = 8 * 3600; // Real Time the conference started (just used by the clock)
         
     /*
     *   == PROGRAM BEGGINING ==
@@ -58,7 +62,8 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     */
     
     //Program variables - do not touch
-    var computedData, node, nodesId = [], allNodesId = [], link, linksId = [], allLinksId = [], svg, force, clock;
+    var computedData, node, nodesId = [], allNodesId = [], link, linksId = [], allLinksId = [], svg, force, clock, minTS, maxTS;
+    var color = d3.scale.category10();
     
     var currentNodeMaxWeight = 0,
         currentLinkMaxWeight = 0,
@@ -71,8 +76,16 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         data = (filePath2 !== undefined) ? getComputedData(filePath1, filePath2) : getData(filePath1); // Load file(s)
         
         computedData = csv ? computeData(data) : data; // Compute it if necessary (i.e if it's not json)
+        minTS = d3.min(computedData.links, function (d) {return d3.min(d.timestamps); });
+        maxTS = d3.max(computedData.links, function (d) {return d3.max(d.timestamps); });
         allNodesId = computedData.nodes.map(function (d) {return d.id;});
         allLinksId = computedData.links.map(function (d) {return d.id;});
+        
+        if(autosettings){
+            step = getStep();
+            windowSize = 50 * step;
+            currentTime = minTS - windowSize;
+        }
         
         d3.select("#graph").selectAll("svg").remove();
         svg = d3.select("#graph").append("svg")
@@ -112,7 +125,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     }; 
  
     var update = function () {
-        force.stop();
+        //force.stop();
         //Update the currentLinks and currentNodes variables with the new window
         updateCurrentData(currentTime, (currentTime + windowSize), computedData);        
         
@@ -145,12 +158,19 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         //Updating Nodes
         node = node.data(currentNodes, function(d) {return d.id;});
         
-        node.selectAll("image")
+        node
+            .selectAll("image")
             .attr("x", function (d) {return -getNodeSize(d) / 2; })
             .attr("y", function (d) {return -getNodeSize(d) / 2; })
             .attr("width", getNodeSize)
             .attr("height", getNodeSize);
-        
+            //*/
+            /*
+            .selectAll("circle")
+            .attr("cx", 0)
+            .attr("cy", 0)
+            .attr("r", function (d) {return getNodeSize(d) / 2; });
+            */
         node.selectAll("text")
             .attr("dx", function (d) {return 5 + getNodeSize(d) / 2; })
             .text(function(d) { return d.id + " (" + d.currentW + ")"; });
@@ -161,12 +181,24 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             .attr("class", "node")
             .call(force.drag);
         
-        newNode.append("image")
-            .attr("xlink:href", "https://github.com/favicon.ico")
+        
+        newNode
+            .append("image")
+            .attr("xlink:href", "user.png")
             .attr("x", function (d) {return -getNodeSize(d) / 2; })
             .attr("y", function (d) {return -getNodeSize(d) / 2; })
             .attr("width", getNodeSize)
             .attr("height", getNodeSize);
+            //*/
+            /*
+            .append("circle").attr("class","inNode")
+            .attr("cx", 0)
+            .attr("cy", 0)
+            .attr("r", function (d) {return getNodeSize(d) / 2; });
+        */
+        if(useGroup){
+            newNode.selectAll("circle").style("fill", function (d) {return color(d.group);});
+        }
         
         newNode.append("text")
               .attr("dx", function (d) {return 5 + getNodeSize(d) / 2; })
@@ -210,6 +242,11 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             .links(displayedLinks);
         //Restart it
         force.start();
+        
+        //Stop when nothing more to show
+        if (currentTime > maxTS) {
+            animate = false;
+        }       
         
         //Launch the next step
         if(animate){
@@ -300,7 +337,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         });
         
         displayedLinks = currentLinks.filter(function (d) {
-            return d.normalizedW >= threshold;
+            return d.normalizedW > threshold;
         });
     };
     
@@ -310,11 +347,33 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         return (linkValue + nodesValue) / 2;
     };
     
+    var getStep = function () {
+        var allTimestamps = [];
+        
+        computedData.links.forEach(function(d) {
+            d.timestamps.forEach(function(d) {
+                if(allTimestamps.indexOf(d) === -1)
+                    allTimestamps.push(d);
+            });
+        });
+        
+        step = (maxTS - minTS) / (allTimestamps.length - 1);
+        allTimestamps = [];
+        return step;
+    };
+    
+    
     /*
     * All setters
     */
     
     start = function () {
+        animate = true;
+        update();
+    };
+    
+    restart = function () {
+        currentTime = minTS - windowSize;
         animate = true;
         update();
     };
