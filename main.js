@@ -1,5 +1,5 @@
 ﻿/*
- * These are global function you can call from index.html or the console
+ * These are global functions you can call from index.html or the console
  * 
  * name // explanation - arguments type
  */
@@ -19,8 +19,8 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 (function(){
     
     //You may specify a csv header if your csv doesn't have one : It must contains the variables 'id1', 'id2', 'timestamp' ; default is:
-    //csvHeader = "timeStamp,id1,id2"
-    csvHeader = "";
+    //csvHeader = "timestamp,id1,id2"
+    csvHeader = "timestamp,id1,id2";
     
     // Log properties
     showLog = true; // Show log (default true)
@@ -44,9 +44,12 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         currentTime = 0, // Beggining of the time-window
         step = 20,   // Step time the time-window is moving
         windowSize = 1000, // TIME-Window size 
-        autosettings = false,
+        autosettings = true,
         
+        //Color by group if there is a group attribute,or use image
         useGroup = true,
+        useImage = true,
+        imagePath = "user2.png",
         
         // Animated graph properties :
         animate = false, // To start animation
@@ -54,7 +57,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         animationOnChanging = true, // Show a circle widening/shrinking to the position of the created/removed node
         showClock = true;
         
-        startingTimeSec = 8 * 3600; // Real Time the conference started (just used by the clock)
+        startingTimeSec = 8 * 3600; // Effective time the conference started (just used by the clock)
         
     /*
     *   == PROGRAM BEGGINING ==
@@ -139,12 +142,14 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             clock.text("Day " + day + "  " + hour + ":" + (min < 10 ? "0" : "") + min + ":" + (sec < 10 ? "0" : "") + sec);
         }
         
-       //Move the window
+        //Move the window
         currentTime += step;
         
         //Update force gravity
-        force.gravity(0.1 + currentNodes.length / 50 * 0.12);
-
+        force.gravity(0.1 + currentNodes.length / 50 * 0.13 - 0.03 * displayedLinks.length / ((currentNodes.length) * (currentNodes.length - 1)));
+        //force.gravity(0.1 + currentNodes.length / 50 * 0.12);
+        
+        
         //Updating Links
         link = link.data(displayedLinks, function(d) {return d.id;});
         
@@ -155,22 +160,27 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         
         link.exit().remove();
         
+        
         //Updating Nodes
         node = node.data(currentNodes, function(d) {return d.id;});
+         
+        if (!useImage || useGroup) {
+            node
+                .selectAll("circle")
+                .attr("cx", 0)
+                .attr("cy", 0)
+                .attr("r", function (d) {return getNodeSize(d) / 2; });
+        }
         
-        node
-            .selectAll("image")
-            .attr("x", function (d) {return -getNodeSize(d) / 2; })
-            .attr("y", function (d) {return -getNodeSize(d) / 2; })
-            .attr("width", getNodeSize)
-            .attr("height", getNodeSize);
-            //*/
-            /*
-            .selectAll("circle")
-            .attr("cx", 0)
-            .attr("cy", 0)
-            .attr("r", function (d) {return getNodeSize(d) / 2; });
-            */
+        if (useImage) {
+            node
+                .selectAll("image")
+                .attr("x", function (d) {return -getNodeSize(d) / 2; })
+                .attr("y", function (d) {return -getNodeSize(d) / 2; })
+                .attr("width", getNodeSize)
+                .attr("height", getNodeSize);
+        }
+        
         node.selectAll("text")
             .attr("dx", function (d) {return 5 + getNodeSize(d) / 2; })
             .text(function(d) { return d.id + " (" + d.currentW + ")"; });
@@ -180,24 +190,27 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         newNode = newNode.append("g")
             .attr("class", "node")
             .call(force.drag);
+         
+        if (!useImage || useGroup) { // If you have to plot circle, or if you show an image but want a backgroung color ...
+            newNode
+                .append("circle").attr("class","inNode")
+                .attr("cx", 0)
+                .attr("cy", 0)
+                .attr("r", function (d) {return getNodeSize(d) / 2; });
+            
+            if(useGroup){
+                newNode.selectAll("circle").style("fill", function (d) {return color(d.group);});
+            }
+        }
         
-        
-        newNode
-            .append("image")
-            .attr("xlink:href", "user.png")
-            .attr("x", function (d) {return -getNodeSize(d) / 2; })
-            .attr("y", function (d) {return -getNodeSize(d) / 2; })
-            .attr("width", getNodeSize)
-            .attr("height", getNodeSize);
-            //*/
-            /*
-            .append("circle").attr("class","inNode")
-            .attr("cx", 0)
-            .attr("cy", 0)
-            .attr("r", function (d) {return getNodeSize(d) / 2; });
-        */
-        if(useGroup){
-            newNode.selectAll("circle").style("fill", function (d) {return color(d.group);});
+        if(useImage){
+            newNode
+                .append("image")
+                .attr("xlink:href", imagePath)
+                .attr("x", function (d) {return -getNodeSize(d) / 2; })
+                .attr("y", function (d) {return -getNodeSize(d) / 2; })
+                .attr("width", getNodeSize)
+                .attr("height", getNodeSize);
         }
         
         newNode.append("text")

@@ -113,6 +113,7 @@ var csv = true,
                 else {
                     var newNode = {
                         id : d["id"+(j+1)],
+                        group : d.group || 0,
                         w : 1,
                         currentW : 0
                     };
