@@ -34,7 +34,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         maxLinkDistance = 400, // In pixel
         
         minLinkSize = 0.5, // The stroke-width in pixel
-        maxLinkSize = 8, // The stroke-width in pixel
+        maxLinkSize = 4, // The stroke-width in pixel
         maxNodeSize = 50, // In pixel
         minNodeSize = 5, // In pixel
         poppingCircleSize = 75, // In pixel
@@ -53,7 +53,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         
         // Animated graph properties :
         animate = false, // To start animation
-        animationStep = 200, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)  
+        animationStep = 1000, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)  
         animationOnChanging = true, // Show a circle widening/shrinking to the position of the created/removed node
         showClock = true;
         
@@ -206,7 +206,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         if(useImage){
             newNode
                 .append("image")
-                .attr("xlink:href", imagePath)
+                .attr("xlink:href", imagePath) // function (d) {return d.imagePath};
                 .attr("x", function (d) {return -getNodeSize(d) / 2; })
                 .attr("y", function (d) {return -getNodeSize(d) / 2; })
                 .attr("width", getNodeSize)
