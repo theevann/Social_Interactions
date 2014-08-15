@@ -1,10 +1,17 @@
 ﻿.link {
     stroke: #ccc;
+    stroke-linecap: round;
 }
 
 .node text {
     pointer-events: none;
     font: 10px sans-serif;
+}
+
+.inNode {
+    fill : steelblue;
+    stroke : black;
+    stroke-width : 1px;
 }
 
 .popIn {
