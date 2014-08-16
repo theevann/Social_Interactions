@@ -34,7 +34,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         maxLinkDistance = 400, // In pixel
         
         minLinkSize = 0.5, // The stroke-width in pixel
-        maxLinkSize = 4, // The stroke-width in pixel
+        maxLinkSize = 8, // The stroke-width in pixel
         maxNodeSize = 50, // In pixel
         minNodeSize = 5, // In pixel
         poppingCircleSize = 75, // In pixel
@@ -183,7 +183,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         
         node.selectAll("text")
             .attr("dx", function (d) {return 5 + getNodeSize(d) / 2; })
-            .text(function(d) { return d.id + " (" + d.currentW + ")"; });
+            .text(function(d) { return (d.name || d.id) + " (" + d.currentW + ")"; });
         
         var newNode = node.enter();
         
@@ -216,7 +216,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         newNode.append("text")
               .attr("dx", function (d) {return 5 + getNodeSize(d) / 2; })
               .attr("dy", ".35em")
-              .text(function(d) { return d.id + " (" + d.currentW + ")"; });
+              .text(function(d) { return (d.name || d.id) + " (" + d.currentW + ")"; });
         
         if(animationOnChanging){
             newNode.append("circle").attr("class","popIn")
@@ -350,6 +350,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         });
         
         displayedLinks = currentLinks.filter(function (d) {
+            return d.currentW / currentLinkMaxWeight > threshold;
             return d.normalizedW > threshold;
         });
     };
