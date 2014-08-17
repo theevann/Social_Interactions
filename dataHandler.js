@@ -103,7 +103,7 @@ var csv = true,
             var indexNodes = [nodesId.indexOf(d.id1),nodesId.indexOf(d.id2)];
             var indexLinks = [linksId.indexOf(d.id1 + "-" + d.id2),linksId.indexOf(d.id2 + "-" + d.id1)];
             
-            if(i%tenth === 0)
+            if(i%tenth === 0 && tenth >= 10)
                 log(Math.floor(i/tenth)*10 + "% computed over " + data.length, true);
             
             for(var j = 0 ; j < 2 ; j++){
