@@ -74,9 +74,9 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         currentLinks = [], // Links in window
         displayedLinks = []; // Links actually displayed (some are not due to threshold) 
     
-    init = function(filePath1, filePath2){
+    init = function(filePaths){
         var data;
-        data = (filePath2 !== undefined) ? getComputedData(filePath1, filePath2) : getData(filePath1); // Load file(s)
+        data = (filePaths instanceof Array) ? getComputedData(filePaths) : getData(filePaths); // Load file(s)
         
         computedData = csv ? computeData(data) : data; // Compute it if necessary (i.e if it's not json)
         minTS = d3.min(computedData.links, function (d) {return d3.min(d.timestamps); });

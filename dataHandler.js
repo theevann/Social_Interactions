@@ -55,27 +55,27 @@ var csv = true,
         return data;
     };
     
-    getComputedData = function (filePath1, filePath2) {
+    getComputedData = function (filePaths) {
         var data = {}, file1, file2;
-        log("Loading file : '" + filePath1 + "'",true);
+        log("Loading file : '" + filePaths[0] + "'",true);
         var xmlhttp1 = new XMLHttpRequest();
         xmlhttp1.open("GET",filePath1,false);
         xmlhttp1.overrideMimeType('text/plain');
         xmlhttp1.send(null);
         file1 = xmlhttp1.responseText;
         
-        log("Loading file : '" + filePath2 + "'",true);
+        log("Loading file : '" + filePaths[1] + "'",true);
         var xmlhttp2 = new XMLHttpRequest();
         xmlhttp2.open("GET",filePath2,false);
         xmlhttp2.overrideMimeType('text/plain');
         xmlhttp2.send(null);
         file2 = xmlhttp2.responseText;
         
-        if(!/.*\.json/.test(filePath1)){
-            log("The file '" + filePath1 + "' has not the expected json extension\nIt will be parsed as a json file",true);
+        if(!/.*\.json/.test(filePaths[0])){
+            log("The file '" + filePaths[0] + "' has not the expected json extension\nIt will be parsed as a json file",true);
         }
-        if(!/.*\.json/.test(filePath2)){
-            log("The file '" + filePath2 + "' has not the expected json extension\nIt will be parsed as a json file",true);
+        if(!/.*\.json/.test(filePaths[1])){
+            log("The file '" + filePaths[1] + "' has not the expected json extension\nIt will be parsed as a json file",true);
         }
         csv = false;
 
