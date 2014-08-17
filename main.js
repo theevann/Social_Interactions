@@ -34,20 +34,21 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         maxLinkDistance = 400, // In pixel
         
         minLinkSize = 0.5, // The stroke-width in pixel
-        maxLinkSize = 8, // The stroke-width in pixel
-        maxNodeSize = 50, // In pixel
+        maxLinkSize = 4, // The stroke-width in pixel
+        maxNodeSize = 60, // In pixel
         minNodeSize = 5, // In pixel
         poppingCircleSize = 75, // In pixel
-        threshold = 0.6, // 0 : show all links / 1 : show no link
+        threshold = 0.7, // 0 : show all links / 1 : show no link
         
         // THIS DEPENDS ON THE DATASET:
         currentTime = 0, // Beggining of the time-window
         step = 20,   // Step time the time-window is moving
-        windowSize = 1000, // TIME-Window size 
+        windowSize = 500, // TIME-Window size 
         autosettings = true,
         
         //Color by group if there is a group attribute,or use image
-        useGroup = true,
+        useGroup = false,
+        groupDistance = 500,
         useImage = true,
         imagePath = "user2.png",
         
@@ -65,7 +66,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     */
     
     //Program variables - do not touch
-    var computedData, node, nodesId = [], allNodesId = [], link, linksId = [], allLinksId = [], svg, force, clock, minTS, maxTS;
+    var computedData, node, currentNodesId = [], allNodesId = [], link, currentLinksId = [], allLinksId = [], groups = [], svg, force, clock, minTS, maxTS;
     var color = d3.scale.category10();
     
     var currentNodeMaxWeight = 0,
@@ -84,11 +85,20 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         allNodesId = computedData.nodes.map(function (d) {return d.id;});
         allLinksId = computedData.links.map(function (d) {return d.id;});
         
-        if(autosettings){
+        //If user wants settings to be sets automatically : useful for a first time use of a dataset
+        if (autosettings) {
             step = getStep();
             windowSize = 50 * step;
             currentTime = minTS - windowSize;
-        }
+        }       
+        
+        //If you want to group people by group !
+        if (useGroup) {
+            computedData.nodes.forEach(function(d) {
+                if(groups.indexOf(d.group) === -1)
+                    groups.push(d.group);
+            });
+        } 
         
         d3.select("#graph").selectAll("svg").remove();
         svg = d3.select("#graph").append("svg")
@@ -107,14 +117,44 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         force = d3.layout.force()
             .gravity(0.1)
             .linkDistance(function(d){return maxLinkDistance + d.currentW / currentLinkMaxWeight * (minLinkDistance - maxLinkDistance);})
-            .linkStrength(0.5)
+            .linkStrength(0.1)
             .friction(0.5)
             .charge(-1000-1000*(1 - threshold))
             .theta(0.5)
             .size([width, height]); 
     
         //Define the tick method to call
-        force.on("tick", function() {
+        force.on("tick", function(e) {
+
+            if (useGroup) {
+                var t1 = new Date().getTime();
+                var centers = [], center, j, k = .2 * e.alpha;
+                
+                // Calcul of barycentre
+                centers = groups.map(function (d) {
+                    center = [0,0];
+                    j = 0;
+                    
+                    currentNodes.forEach(function (t) {
+                        if(t.group === d){
+                            center[0] += t.x;
+                            center[1] += t.y;
+                            j++;
+                        }
+                    });
+                    
+                    return [center[0] / (j || 1), center[1]  / (j || 1)];
+                });
+                //log(new Date().getTime() - t1, true);
+
+                // Push nodes toward their designated group barycentre
+                currentNodes.forEach(function(o, i) {
+                    var id = groups.indexOf(o.group); 
+                    o.y += (centers[id][1] - o.y) * k;
+                    o.x += (centers[id][0] - o.x) * k;
+                });
+            }
+        
             link.attr("x1", function(d) { return d.source.x; })
                 .attr("y1", function(d) { return d.source.y; })
                 .attr("x2", function(d) { return d.target.x; })
@@ -166,7 +206,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
          
         if (!useImage || useGroup) {
             node
-                .selectAll("circle")
+                .selectAll(".inNode")
                 .attr("cx", 0)
                 .attr("cy", 0)
                 .attr("r", function (d) {return getNodeSize(d) / 2; });
@@ -283,51 +323,51 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             changingW = 0;
             
         allData.links.forEach(function(d){
-            j = linksId.indexOf(d.id);
+            j = currentLinksId.indexOf(d.id);
             changingW = -d.currentW + (d.currentW = (d3.bisectRight(d.timestamps, endTime) - d3.bisectLeft(d.timestamps, startTime))); // Compute the difference between previous and new weight of the link on the time window
             
             if (d.currentW !== 0 && j === -1) { // If the link has to exist but doesn't exist
                     currentLinks.push(d);
-                    linksId.push(d.id);
+                    currentLinksId.push(d.id);
                     log("Link created (" + d.id + ") : " + d.sourceId + " <=> " + d.targetId);
                     
                     //Then we have to add the nodes if they didn't exist
-                    n1 = nodesId.indexOf(d.sourceId);                    
+                    n1 = currentNodesId.indexOf(d.sourceId);                    
                     if (n1 === -1) {
                         idx = allNodesId.indexOf(d.sourceId);
                         newNode = allData.nodes[idx];
                         currentNodes.push(newNode);
-                        nodesId.push(d.sourceId);
+                        currentNodesId.push(d.sourceId);
                         log("Node created : " + d.sourceId);
                     }
                     
-                    n2 = nodesId.indexOf(d.targetId);
+                    n2 = currentNodesId.indexOf(d.targetId);
                     if (n2 === -1) {
                         idx = allNodesId.indexOf(d.targetId);
                         newNode = allData.nodes[idx];
                         currentNodes.push(newNode);
-                        nodesId.push(d.targetId);
+                        currentNodesId.push(d.targetId);
                         log("Node created : " + d.targetId);
                     }
                   
             } 
             else if (d.currentW === 0 && j !== -1) { // If the link shouldn't exist but exist
                 currentLinks.splice(j,1);
-                linksId.splice(j,1);
+                currentLinksId.splice(j,1);
                 log("Link removed (" + d.id + ") : " + d.sourceId + " <=> " + d.targetId);
                 
                 //Then we have to remove the node and update the current Weight
-                n1 = nodesId.indexOf(d.sourceId);              
+                n1 = currentNodesId.indexOf(d.sourceId);              
                 if (currentNodes[n1].currentW + changingW === 0) { // if the node is linked with only one other node, then remove it
                     currentNodes.splice(n1,1);
-                    nodesId.splice(n1,1);
+                    currentNodesId.splice(n1,1);
                     log("Node removed : " + d.sourceId);
                 }
                 
-                n2 = nodesId.indexOf(d.targetId); 
+                n2 = currentNodesId.indexOf(d.targetId); 
                 if (currentNodes[n2].currentW + changingW === 0) { // Idem
                     currentNodes.splice(n2,1);
-                    nodesId.splice(n2,1);
+                    currentNodesId.splice(n2,1);
                     log("Node removed : " + d.targetId);
                 }
             }
@@ -344,13 +384,13 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         
         //Link the source and target with the current position if the nodes in the node array and decided if we have to display it
         currentLinks.forEach(function(d){
-            d.source = nodesId.indexOf(d.sourceId);
-            d.target = nodesId.indexOf(d.targetId);
+            d.source = currentNodesId.indexOf(d.sourceId);
+            d.target = currentNodesId.indexOf(d.targetId);
             d.normalizedW = computeNormalizedLinkWeight(d);   
         });
         
         displayedLinks = currentLinks.filter(function (d) {
-            return d.currentW / currentLinkMaxWeight > threshold;
+            //return d.currentW / currentLinkMaxWeight > threshold;
             return d.normalizedW > threshold;
         });
     };

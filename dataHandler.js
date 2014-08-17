@@ -59,14 +59,14 @@ var csv = true,
         var data = {}, file1, file2;
         log("Loading file : '" + filePaths[0] + "'",true);
         var xmlhttp1 = new XMLHttpRequest();
-        xmlhttp1.open("GET",filePath1,false);
+        xmlhttp1.open("GET",filePaths[0],false);
         xmlhttp1.overrideMimeType('text/plain');
         xmlhttp1.send(null);
         file1 = xmlhttp1.responseText;
         
         log("Loading file : '" + filePaths[1] + "'",true);
         var xmlhttp2 = new XMLHttpRequest();
-        xmlhttp2.open("GET",filePath2,false);
+        xmlhttp2.open("GET",filePaths[1],false);
         xmlhttp2.overrideMimeType('text/plain');
         xmlhttp2.send(null);
         file2 = xmlhttp2.responseText;
