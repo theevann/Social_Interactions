@@ -11,7 +11,7 @@ For example:
     init("contact_list.csv"); // For a csv file
 OR
 
-    init("nodes.json","edges.json"); // For 2 json files having the data
+    init(["nodes.json","edges.json"]); // For 2 json files having the data
 
 Pay attention to the order : nodes and then edges.
 
