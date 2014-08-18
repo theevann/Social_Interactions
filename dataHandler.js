@@ -1,4 +1,4 @@
-﻿var computeData,
+﻿var loadData,
     getData,
     log;
     
@@ -55,7 +55,7 @@ var csv = true,
         return data;
     };
     
-    getComputedData = function (filePaths) {
+    getPreloadedData = function (filePaths) {
         var data = {}, file1, file2;
         log("Loading file : '" + filePaths[0] + "'",true);
         var xmlhttp1 = new XMLHttpRequest();
@@ -88,7 +88,7 @@ var csv = true,
         return data;
     };
 
-    computeData = function (data) {
+    loadData = function (data) {
         var nodes = [],
             links = [],
             nodesId = [],
@@ -104,7 +104,7 @@ var csv = true,
             var indexLinks = [linksId.indexOf(d.id1 + "-" + d.id2),linksId.indexOf(d.id2 + "-" + d.id1)];
             
             if(i%tenth === 0 && tenth >= 10)
-                log(Math.floor(i/tenth)*10 + "% computed over " + data.length, true);
+                log(Math.floor(i/tenth)*10 + "% loaded over " + data.length, true);
             
             for(var j = 0 ; j < 2 ; j++){
                 if (indexNodes[j] >= 0) {
