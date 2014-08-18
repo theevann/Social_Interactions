@@ -8,6 +8,14 @@
     font: 10px sans-serif;
 }
 
+.link.linkVisited {
+    stroke : blueviolet;
+}
+
+.nodeVisited .inNode {
+    fill : blueviolet;
+}
+
 .inNode {
     fill : steelblue;
     stroke : black;
