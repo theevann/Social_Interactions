@@ -55,7 +55,7 @@ var csv = true,
         return data;
     };
     
-    getPreloadedData = function (filePaths) {
+    getLoadedData = function (filePaths) {
         var data = {}, file1, file2;
         log("Loading file : '" + filePaths[0] + "'",true);
         var xmlhttp1 = new XMLHttpRequest();
