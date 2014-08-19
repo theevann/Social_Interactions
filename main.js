@@ -22,7 +22,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
     //You may specify a csv header if your csv doesn't have one : It must contains the variables 'id1', 'id2', 'timestamp' ; default is:
     //csvHeader = "timestamp,id1,id2"
-    csvHeader = "timestamp,id1,id2";
+    csvHeader = "";
 
     // Log properties
     showLog = true; // Show log (default true)
@@ -50,7 +50,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         autosettings = true,
 
         //Color by group if there is a group attribute,or use image
-        useGroup = false,
+        useGroup = true,
         useImage = true,
         imagePath = "user.svg",
 
@@ -239,7 +239,6 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             newNode.selectAll("circle").style("fill", function (d) {return color(d.group);});
         }
     
-
         if(useImage){
             newNode
                 .append("image")
@@ -513,6 +512,15 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
     setThreshold = function (_) {
         threshold = _;
+    };
+    
+    setGroup = function (_) {
+        useGroup = _;
+        if (useGroup) {
+            node.selectAll("circle").style("fill", function (d) {return color(d.group);});
+        } else {
+            node.selectAll("circle").style("fill", "steelblue");
+        }
     };
     
     setSpreadingThreshold = function (_) {
