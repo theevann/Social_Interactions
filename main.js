@@ -47,7 +47,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     //Parameters - may be modified
     var width = parseFloat(d3.select("#graph").style("width")),
         height = parseFloat(d3.select("#graph").style("height")),
-        style = 'normal', // For now : 'normal' and 'dark'
+        style = 'dark', // For now : 'normal' and 'dark'
 
         minLinkDistance = 200, // In pixel
         maxLinkDistance = 400, // In pixel
@@ -74,7 +74,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
         // Animated graph properties :
         animate = false, // To start animation
-        animationStep = 1000, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)
+        animationStep = 300, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)
         animationOnChanging = true, // Show a circle widening/shrinking to the position of the created/removed node
         showClock = true,
 
@@ -88,6 +88,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     //Program private variables - do not touch
     var computedData, node, newNode, link, svg, force, clock, minTS, maxTS, timeout,
         color = d3.scale.category10(),
+        transitionTime = 800,
         currentNodeMaxWeight = 0,
         currentLinkMaxWeight = 0,
         currentNodes = d3.map(), // Nodes in window
@@ -112,6 +113,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         if (autosettings) {
             log("Finding good settings...",true);
             computeSettings(computedData.allTimestamps);
+            log('Step : ' + d3.format(',.2f')(step) + 's\nWindow of time : ' + d3.format(',.2f')(windowSize) + 's', true);
         }
 
         log("Initializing...", true);
@@ -188,6 +190,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
         //Set desired style
         setStyle(style);
+        setAnimationStep(animationStep);
     };
 
     update = function (moveWindow) {
@@ -300,7 +303,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
                 .attr("cy", 0)
                 .attr("r", 0)
                 .attr("opacity",0.7)
-                .transition().duration(800)
+                .transition().duration(transitionTime)
                 .attr("r", poppingCircleSize)
                 .attr("opacity",0)
                 .each("end",function() {
@@ -312,14 +315,14 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
                 .attr("cy", 0)
                 .attr("r", poppingCircleSize)
                 .attr("opacity",0)
-                .transition().duration(800)
+                .transition().duration(transitionTime)
                 .attr("r", 0)
                 .attr("opacity",0.7)
                 .each("end",function() {
                     d3.select(this).remove();
                 });
 
-            node.exit().transition().duration(800)
+            node.exit().transition().duration(transitionTime)
                 .remove();
         } else {
             node.exit().remove();
@@ -570,6 +573,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
     setAnimationStep = function (_) {
         animationStep = _;
+        transitionTime = _ < 800 ? _ : 800;
     };
 
     setWindowSize = function (_) {
