@@ -1,6 +1,10 @@
 ﻿.link {
-    stroke: #ccc;
+    stroke: #CCC;
     stroke-linecap: round;
+}
+
+.linkVisited {
+    stroke : blueviolet;
 }
 
 .node text {
@@ -8,18 +12,14 @@
     font: 10px sans-serif;
 }
 
-.link.linkVisited {
-    stroke : blueviolet;
-}
-
-.nodeVisited .inNode {
-    fill : blueviolet;
-}
-
 .inNode {
     fill : steelblue;
     stroke : black;
     stroke-width : 1px;
+}
+
+.nodeVisited .inNode {
+    fill : blueviolet;
 }
 
 .popIn {
@@ -46,8 +46,4 @@
     top: 0.5em;
     background-color: white;
     z-index : 10;
-}
-
-#clock.video{
-    left : 37%;
 }

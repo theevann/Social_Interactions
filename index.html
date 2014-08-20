@@ -3,19 +3,20 @@
 	<head>
 		<title>Social Interaction</title>
         <link rel="stylesheet" type="text/css" href="style.css" />
+        <link rel="stylesheet" type="text/css" href="style_dark.css" />
         <script src="http://d3js.org/d3.v3.min.js"></script>
         <script src="d3.min.js"></script>
 	</head>
 <body>
-    <div id="clock" class=""></div>
+    <div id="clock" ></div>
     <div id="graph" style="width:100%;margin:auto;height:790px"></div>
     
     <script src="dataHandler.js"></script>
     <script src="main.js"></script>
     <script>
         //*
-        init("data/contact_list.csv");
-        //init("test.csv");
+        //init("data/contact_list.csv");
+        init("data/ConferenceSimulation.csv");
         /*/
         init(["data/nodes.json","data/edges.json"]);
         //*/

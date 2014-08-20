@@ -11,27 +11,31 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     restart, // Launch animation from the beggining of timesteps
     pause, // Pause animation
     setAnimationStep, // Set animation step : in real life - Integer
-    setTimeStep, // Set time step : in the readen file - Integer
+    setTimeStep, // Set time step : in the read file - Integer
+    setStyle, // Set the style - String ('normal' or 'dark')
+    setGroup, // Des/Activate group - Boolean
+    setLog, // Des/Activate logs, choose level - Boolean or string
     setThreshold, // Set threshold - Integer in [0,1]
     setSpreadingThreshold, // Set spreading threshold - Integer in [0,1]
     setCurrentTime, // Set the current time (different from the clock one  : clock = currentTime + windowSize) - Integer
-    setAnimationOnChanging, // Circle popping when apparition/disparition - boolean
+    setAnimationOnChanging, // Circle popping when apparition/disparition - Boolean
     setWindowSize; // Set the time-window size - Integer
 
 (function(){
 
     //You may specify a csv header if your csv doesn't have one : It must contains the variables 'id1', 'id2', 'timestamp' ; default is:
     //csvHeader = "timestamp,id1,id2"
-    csvHeader = "";
+    csvHeader = '';
 
     // Log properties
     showLog = true; // Show log (default true)
-    logLevel = 'all'; // You can choose 'all' / 'limited' (default 'limited')
+    logLevel = 'limited'; // You can choose 'all' / 'limited' (default 'limited')
 
     //Parameters - may be modified
-    var width = 1580,
-        height = 790,
-
+    var width = parseFloat(d3.select("#graph").style("width")),
+        height = parseFloat(d3.select("#graph").style("height")),
+        style = 'normal', // For now : 'normal' and 'dark'
+        
         minLinkDistance = 200, // In pixel
         maxLinkDistance = 400, // In pixel
 
@@ -50,9 +54,9 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         autosettings = true,
 
         //Color by group if there is a group attribute,or use image
-        useGroup = true,
+        useGroup = false,
         useImage = true,
-        imagePath = "user.svg",
+        imagePath = {normal : "img/user.svg", dark : "img/user_dark.svg"},
 
         // Animated graph properties :
         animate = false, // To start animation
@@ -68,7 +72,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     */
 
     //Program variables - do not touch
-    var computedData, node, link, groups = [], svg, force, clock, minTS, maxTS, timeout;
+    var computedData, node, newNode, link, groups = [], svg, force, clock, minTS, maxTS, timeout;
     var color = d3.scale.category10();
 
     var currentNodeMaxWeight = 0,
@@ -84,17 +88,17 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         computedData = csv ? loadData(data) : data; // Compute it if necessary (i.e if it's not json)
         minTS = d3.min(computedData.links.values(), function (d) {return d3.min(d.timestamps); });
         maxTS = d3.max(computedData.links.values(), function (d) {return d3.max(d.timestamps); });
-        
-        //allNodesId = computedData.nodes.map(function (d) {return d.id;});
-        //allLinksId = computedData.links.map(function (d) {return d.id;});
 
         //If user wants settings to be sets automatically : useful for a first time use of a dataset
         if (autosettings) {
+            log("Finding good settings...",true)
             step = computeStep();
             windowSize = 50 * step;
             currentTime = minTS - windowSize;
         }
-
+        
+        log("Initializing...",true)
+        
         //If you want to group people by group !
         if (useGroup) {
             computedData.nodes.values().forEach(function(d) {
@@ -151,8 +155,9 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
                 //log(new Date().getTime() - t1, true);
 
                 // Push nodes toward their designated group barycentre
+                var id;
                 currentNodes.forEach(function (k, v) {
-                    var id = groups.indexOf(v.group);
+                    id = groups.indexOf(v.group);
                     v.y += (centers[id][1] - v.y) * reduction;
                     v.x += (centers[id][0] - v.x) * reduction;
                 });
@@ -165,7 +170,9 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
             node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
         });
-
+        
+        //Set desired style
+        setStyle(style);
     };
 
     var update = function () {
@@ -185,13 +192,16 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
         //Move the window
         currentTime += step;
-
-        //Update force gravity
+        
+        
+        // ###### Updating Force gravity ######
         //force.gravity(0.1 + currentNodes.size() / 50 * 0.13 - 0.03 * displayedLinks.size() / ((currentNodes.size()) * (currentNodes.size() - 1)));
         force.gravity(0.1 + currentNodes.size() / 50 * 0.12);
 
-
-        //Updating Links
+        
+        
+        // ###### Updating Links ###### 
+        
         link = link.data(displayedLinks, function(d) {return d.id;});
 
         link.enter().insert("line", ".node")
@@ -201,30 +211,42 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
         link.exit().remove();
 
-
-        //Updating Nodes
+        
+        
+        // ###### Updating Nodes ######
+        
+        // === Existing Nodes ===
+        //Updating nodes data
         node = node.data(currentNodes.values(), function(d) {return d.id;});
 
+        //Updating nodes size
         node
             .selectAll(".inNode")
-            .attr("cx", 0)
-            .attr("cy", 0)
-            .attr("r", function (d) {return getNodeSize(d) / 2; });
-
+            .transition()
+            .duration(60)
+            .attr("r", function (d) {return (getNodeSize(d) / 2) * (useGroup ? 0.9 : 1); });
+        
+        //Updating images size (if needed)
         if (useImage) {
             node
                 .selectAll("image")
+                .transition()
+                .duration(50)
                 .attr("x", function (d) {return -getNodeSize(d) / 2; })
                 .attr("y", function (d) {return -getNodeSize(d) / 2; })
                 .attr("width", getNodeSize)
                 .attr("height", getNodeSize);
         }
-
+        
+        //005.1 int
+        //Updating texts content and position
         node.selectAll("text")
             .attr("dx", function (d) {return 5 + getNodeSize(d) / 2; })
             .text(function(d) { return (d.name || d.id) + " (" + d.currentW + ")"; });
-
-        var newNode = node.enter();
+        
+        
+        // === New Nodes ===
+        newNode = node.enter();
 
         newNode = newNode.append("g")
             .attr("class", "node")
@@ -234,7 +256,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             .append("circle").attr("class","inNode")
             .attr("cx", 0)
             .attr("cy", 0)
-            .attr("r", function (d) {return getNodeSize(d) / 2; });
+            .attr("r", function (d) {return (getNodeSize(d) / 2) * (useGroup ? 0.9 : 1); });
 
         if (useGroup) {
             newNode.selectAll("circle").style("fill", function (d) {return color(d.group);});
@@ -243,7 +265,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         if (useImage) {
             newNode
                 .append("image")
-                .attr("xlink:href", imagePath) // function (d) {return d.imagePath};
+                .attr("xlink:href", imagePath[style]) // function (d) {return d.imagePath};
                 .attr("x", function (d) {return -getNodeSize(d) / 2; })
                 .attr("y", function (d) {return -getNodeSize(d) / 2; })
                 .attr("width", getNodeSize)
@@ -497,12 +519,30 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         threshold = _;
     };
     
+    setLog = function (_) {
+        if(_ === false) {
+            showLog = false;
+        } else if (_ === 'all') {
+            showLog = true;
+            logLevel = 'all';
+        } else {
+            logLevel = 'limited';
+        }
+        
+    }
+    
+    setStyle = function (_) {
+        style = _;
+        node.selectAll('image').attr("xlink:href", imagePath[style]);
+        d3.select("body").attr("class",_)
+    }
+    
     setGroup = function (_) {
         useGroup = _;
         if (useGroup) {
             node.selectAll("circle").style("fill", function (d) {return color(d.group);});
         } else {
-            node.selectAll("circle").style("fill", "steelblue");
+            node.selectAll("circle").style("fill", null);
         }
     };
     
