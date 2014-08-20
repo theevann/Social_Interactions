@@ -26,7 +26,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
     // Log properties
     showLog = true; // Show log (default true)
-    logLevel = 'limited'; // You can choose 'all' / 'limited' (default 'limited')
+    logLevel = 'all'; // You can choose 'all' / 'limited' (default 'limited')
 
     //Parameters - may be modified
     var width = 1580,
@@ -68,13 +68,13 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     */
 
     //Program variables - do not touch
-    var computedData, node, currentNodesId = [], allNodesId = [], link, currentLinksId = [], allLinksId = [], groups = [], svg, force, clock, minTS, maxTS, timeout;
+    var computedData, node, link, groups = [], svg, force, clock, minTS, maxTS, timeout;
     var color = d3.scale.category10();
 
     var currentNodeMaxWeight = 0,
         currentLinkMaxWeight = 0,
-        currentNodes = [], // Nodes in window
-        currentLinks = [], // Links in window
+        currentNodes = d3.map(), // Nodes in window
+        currentLinks = d3.map(), // Links in window
         displayedLinks = []; // Links actually displayed (some are not due to threshold)
 
     init = function(filePaths){
@@ -82,21 +82,22 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         data = (filePaths instanceof Array) ? getLoadedData(filePaths) : getData(filePaths); // Load file(s)
 
         computedData = csv ? loadData(data) : data; // Compute it if necessary (i.e if it's not json)
-        minTS = d3.min(computedData.links, function (d) {return d3.min(d.timestamps); });
-        maxTS = d3.max(computedData.links, function (d) {return d3.max(d.timestamps); });
-        allNodesId = computedData.nodes.map(function (d) {return d.id;});
-        allLinksId = computedData.links.map(function (d) {return d.id;});
+        minTS = d3.min(computedData.links.values(), function (d) {return d3.min(d.timestamps); });
+        maxTS = d3.max(computedData.links.values(), function (d) {return d3.max(d.timestamps); });
+        
+        //allNodesId = computedData.nodes.map(function (d) {return d.id;});
+        //allLinksId = computedData.links.map(function (d) {return d.id;});
 
         //If user wants settings to be sets automatically : useful for a first time use of a dataset
         if (autosettings) {
-            step = getStep();
+            step = computeStep();
             windowSize = 50 * step;
             currentTime = minTS - windowSize;
         }
 
         //If you want to group people by group !
         if (useGroup) {
-            computedData.nodes.forEach(function(d) {
+            computedData.nodes.values().forEach(function(d) {
                 if(groups.indexOf(d.group) === -1)
                     groups.push(d.group);
             });
@@ -113,7 +114,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             .data(displayedLinks, function(d) {return d.id;});
 
         node = svg.selectAll(".node")
-            .data(currentNodes, function(d) {return d.id;});
+            .data(currentNodes.values(), function(d) {return d.id;});
 
         // Change it only if you know what you're doing
         force = d3.layout.force()
@@ -130,17 +131,17 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
             if (useGroup) {
                 //var t1 = new Date().getTime();
-                var centers = [], center, j, k = 0.2 * e.alpha;
+                var centers = [], center, j, reduction = 0.2 * e.alpha;
 
                 // Calcul of barycentre
-                centers = groups.map(function (d) {
+                centers = groups.map(function (d) { // TO BE OPTIMIZED <===========
                     center = [0,0];
                     j = 0;
 
-                    currentNodes.forEach(function (t) {
-                        if(t.group === d){
-                            center[0] += t.x;
-                            center[1] += t.y;
+                    currentNodes.forEach(function (k, v) {
+                        if(v.group === d){
+                            center[0] += v.x;
+                            center[1] += v.y;
                             j++;
                         }
                     });
@@ -150,10 +151,10 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
                 //log(new Date().getTime() - t1, true);
 
                 // Push nodes toward their designated group barycentre
-                currentNodes.forEach(function(o) {
-                    var id = groups.indexOf(o.group);
-                    o.y += (centers[id][1] - o.y) * k;
-                    o.x += (centers[id][0] - o.x) * k;
+                currentNodes.forEach(function (k, v) {
+                    var id = groups.indexOf(v.group);
+                    v.y += (centers[id][1] - v.y) * reduction;
+                    v.x += (centers[id][0] - v.x) * reduction;
                 });
             }
 
@@ -186,8 +187,8 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         currentTime += step;
 
         //Update force gravity
-        //force.gravity(0.1 + currentNodes.length / 50 * 0.13 - 0.03 * displayedLinks.length / ((currentNodes.length) * (currentNodes.length - 1)));
-        force.gravity(0.1 + currentNodes.length / 50 * 0.12);
+        //force.gravity(0.1 + currentNodes.size() / 50 * 0.13 - 0.03 * displayedLinks.size() / ((currentNodes.size()) * (currentNodes.size() - 1)));
+        force.gravity(0.1 + currentNodes.size() / 50 * 0.12);
 
 
         //Updating Links
@@ -202,7 +203,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
 
         //Updating Nodes
-        node = node.data(currentNodes, function(d) {return d.id;});
+        node = node.data(currentNodes.values(), function(d) {return d.id;});
 
         node
             .selectAll(".inNode")
@@ -235,11 +236,11 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             .attr("cy", 0)
             .attr("r", function (d) {return getNodeSize(d) / 2; });
 
-        if(useGroup){
+        if (useGroup) {
             newNode.selectAll("circle").style("fill", function (d) {return color(d.group);});
         }
     
-        if(useImage){
+        if (useImage) {
             newNode
                 .append("image")
                 .attr("xlink:href", imagePath) // function (d) {return d.imagePath};
@@ -287,8 +288,9 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
         //Update the force
         force
-            .nodes(currentNodes)
+            .nodes(currentNodes.values())
             .links(displayedLinks);
+        
         //Restart it
         force.start();
 
@@ -311,97 +313,82 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     };
 
     var updateCurrentData = function (startTime, endTime, allData) { // TO DO : update link weight too
-        var j = 0,
+        var linkExist,
             n1 = 0,
             n2 = 0,
             idx = 0,
             newNode = {},
             changingW = 0;
 
-        allData.links.forEach(function(d){
-            j = currentLinksId.indexOf(d.id);
-            changingW = -d.currentW + (d.currentW = (d3.bisectRight(d.timestamps, endTime) - d3.bisectLeft(d.timestamps, startTime))); // Compute the difference between previous and new weight of the link on the time window
+        allData.links.forEach(function (k, v) {
+            linkExist = currentLinks.has(v.id);
+            changingW = -v.currentW + (v.currentW = (d3.bisectRight(v.timestamps, endTime) - d3.bisectLeft(v.timestamps, startTime))); // Compute the difference between previous and new weight of the link on the time window
 
-            if (d.currentW !== 0 && j === -1) { // If the link has to exist but doesn't exist
-                    currentLinks.push(d);
-                    currentLinksId.push(d.id);
-                    log("Link created (" + d.id + ") : " + d.sourceId + " <=> " + d.targetId);
+            if (v.currentW !== 0 && !linkExist) { // If the link has to exist but doesn't exist
+                currentLinks.set(v.id, v);
+                log("Link created (" + v.id + ") : " + v.sourceId + " <=> " + v.targetId);
 
-                    //Then we have to add the nodes if they didn't exist
-                    n1 = currentNodesId.indexOf(d.sourceId);
-                    if (n1 === -1) {
-                        idx = allNodesId.indexOf(d.sourceId);
-                        newNode = allData.nodes[idx];
-                        currentNodes.push(newNode);
-                        currentNodesId.push(d.sourceId);
-                        log("Node created : " + d.sourceId);
-                    }
+                //Then we have to add the nodes if they didn't exist
+                if (!currentNodes.has(v.sourceId)) {
+                    newNode = allData.nodes.get(v.sourceId);
+                    currentNodes.set(newNode.id, newNode);
+                    log("Node created : " + v.sourceId);
+                }
+                
+                if (!currentNodes.has(v.targetId)) {
+                    newNode = allData.nodes.get(v.targetId);
+                    currentNodes.set(newNode.id, newNode);
+                    log("Node created : " + v.targetId);
+                }
 
-                    n2 = currentNodesId.indexOf(d.targetId);
-                    if (n2 === -1) {
-                        idx = allNodesId.indexOf(d.targetId);
-                        newNode = allData.nodes[idx];
-                        currentNodes.push(newNode);
-                        currentNodesId.push(d.targetId);
-                        log("Node created : " + d.targetId);
-                    }
-
-            }
-            else if (d.currentW === 0 && j !== -1) { // If the link shouldn't exist but exist
-                currentLinks.splice(j,1);
-                currentLinksId.splice(j,1);
-                log("Link removed (" + d.id + ") : " + d.sourceId + " <=> " + d.targetId);
+            } else if (v.currentW === 0 && linkExist) { // If the link shouldn't exist but exist
+                currentLinks.remove(v.id);
+                log("Link removed (" + v.id + ") : " + v.sourceId + " <=> " + v.targetId);
 
                 //Then we have to remove the node and update the current Weight
-                n1 = currentNodesId.indexOf(d.sourceId);
-                if (currentNodes[n1].currentW + changingW === 0) { // if the node is linked with only one other node, then remove it
-                    currentNodes.splice(n1,1);
-                    currentNodesId.splice(n1,1);
-                    log("Node removed : " + d.sourceId);
+                if (currentNodes.get(v.sourceId).currentW + changingW === 0) { // if the node is linked with only one other node, then remove it
+                    currentNodes.remove(v.sourceId);
+                    log("Node removed : " + v.sourceId);
                 }
 
-                n2 = currentNodesId.indexOf(d.targetId);
-                if (currentNodes[n2].currentW + changingW === 0) { // Idem
-                    currentNodes.splice(n2,1);
-                    currentNodesId.splice(n2,1);
-                    log("Node removed : " + d.targetId);
+                if (currentNodes.get(v.targetId).currentW + changingW === 0) { // if the node is linked with only one other node, then remove it
+                    currentNodes.remove(v.targetId);
+                    log("Node removed : " + v.targetId);
                 }
             }
 
-            n1 = allNodesId.indexOf(d.sourceId);
-            n2 = allNodesId.indexOf(d.targetId);
-            allData.nodes[n1].currentW += changingW;
-            allData.nodes[n2].currentW += changingW;
+            allData.nodes.get(v.sourceId).currentW += changingW;
+            allData.nodes.get(v.targetId).currentW += changingW;
         });
 
         //Update the current maximum weight
-        currentNodeMaxWeight = d3.max(currentNodes, function(d) {return d.currentW;});
-        currentLinkMaxWeight = d3.max(currentLinks, function(d) {return d.currentW;});
+        currentNodeMaxWeight = d3.max(currentNodes.values(), function(d) {return d.currentW;});
+        currentLinkMaxWeight = d3.max(currentLinks.values(), function(d) {return d.currentW;});
 
         //Link the source and target with the current position if the nodes in the node array and decide if we have to display it
-        currentLinks.forEach(function(d){
-            d.source = currentNodesId.indexOf(d.sourceId);
-            d.target = currentNodesId.indexOf(d.targetId);
-            d.normalizedW = computeNormalizedLinkWeight(d);
+        currentLinks.forEach(function(k, v){
+            v.source = currentNodes.get(v.sourceId);
+            v.target = currentNodes.get(v.targetId);
+            v.normalizedW = computeNormalizedLinkWeight(v);
         });
 
-        displayedLinks = currentLinks.filter(function (d) {
+        displayedLinks = currentLinks.values().filter(function (d) {
             //return d.currentW / currentLinkMaxWeight > threshold;
             return d.normalizedW > threshold;
         });
     };
 
     var computeNormalizedLinkWeight = function (link) {
-        var nodesValue = (currentNodes[link.source].currentW + currentNodes[link.target].currentW) / (2 * currentNodeMaxWeight);
+        var nodesValue = (link.source.currentW + link.target.currentW) / (2 * currentNodeMaxWeight);
         var linkValue = link.currentW / currentLinkMaxWeight;
         return (linkValue + nodesValue) / 2;
     };
 
-    var getStep = function () {
+    var computeStep = function () {
         var allTimestamps = [];
 
-        computedData.links.forEach(function(d) {
-            d.timestamps.forEach(function(d) {
+        computedData.links.forEach(function(k, v) {
+            v.timestamps.forEach(function(d) {
                 if(allTimestamps.indexOf(d) === -1)
                     allTimestamps.push(d);
             });
@@ -411,7 +398,6 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         allTimestamps = [];
         return step;
     };
-
 
     /*
     * Probability
@@ -426,31 +412,28 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     };
     
     var buildTree = function () {      
-        currentLinks.forEach( function (d) {
-            var sourceNode = currentNodes[currentNodesId.indexOf(d.sourceId)];
-            var targetNode = currentNodes[currentNodesId.indexOf(d.targetId)];
-            
-            if (sourceNode.linksId.indexOf(d.id) === -1) {
-                sourceNode.linksId.push(d.id);
+        currentLinks.forEach( function (k, v) {
+            if (v.source.linksId.indexOf(v.id) === -1) {
+                v.source.linksId.push(v.id);
             }
             
-            if (targetNode.linksId.indexOf(d.id) === -1) {
-                targetNode.linksId.push(d.id);
+            if (v.target.linksId.indexOf(v.id) === -1) {
+                v.target.linksId.push(v.id);
             }
         });
     };
 
     spreadIdeaFrom = function (id, spThreshold) {
         spreadingThreshold = spThreshold || spreadingThreshold;
-        var node_ = currentNodes[currentNodesId.indexOf(id)],
+        var node_ = currentNodes.get(id),
             link_ = null,
             targetId;
         
         node_.visited = true;
         node.filter( function (d) {return d.id === node_.id;}).classed("nodeVisited",true);
         node_.linksId.forEach( function (d) {
-            link_ = currentLinks[currentLinksId.indexOf(d)];
-            target = currentNodes[currentNodesId.indexOf(node_.id === link_.sourceId ? link_.targetId : link_.sourceId)];
+            link_ = currentLinks.get(d);
+            target = currentNodes.get(node_.id === link_.sourceId ? link_.targetId : link_.sourceId);
             if(!target.visited && (node_.currentW / currentNodeMaxWeight + link_.currentW / currentLinkMaxWeight > spreadingThreshold)) {
                 node.filter( function (d) {return d.id === target.id;}).classed("nodeVisited",true);
                 link.filter( function (d) {return d.id === link_.id;}).classed("linkVisited",true);
@@ -471,10 +454,10 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     }
     
     clearProbability = function (clearTree) {
-        computedData.nodes.forEach( function (d) {
+        computedData.nodes.forEach( function (k, v) {
             if (clearTree)
-                d.linksId = [];
-            d.visited = false;
+                v.linksId = [];
+            v.visited = false;
         }); 
         
         node.classed("nodeVisited", false);

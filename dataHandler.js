@@ -1,5 +1,6 @@
 ﻿var loadData,
     getData,
+    getLoadedData,
     log;
     
 var csv = true,
@@ -56,7 +57,7 @@ var csv = true,
     };
     
     getLoadedData = function (filePaths) {
-        var data = {}, file1, file2;
+        var data = { nodes : d3.map(), links : d3.map()}, nodesArray, linksArray, file1, file2;
         log("Loading file : '" + filePaths[0] + "'",true);
         var xmlhttp1 = new XMLHttpRequest();
         xmlhttp1.open("GET",filePaths[0],false);
@@ -79,81 +80,77 @@ var csv = true,
         }
         csv = false;
 
-        data.nodes = JSON.parse(file1);
-        data.links = JSON.parse(file2);
+        nodesArray = JSON.parse(file1);
+        linksArray = JSON.parse(file2);
         
-        data.nodes.forEach(function (d) {d.id = +d.id; d.w = +d.w; d.currentW = 0; d.group = +d.group;});
-        data.links.forEach(function (d) {d.timestamps.forEach(function(t,i){d.timestamps[i] = +d.timestamps[i];}); d.id = +d.id || idCounter++; d.sourceId = +d.sourceId; d.currentW = 0; d.targetId = +d.targetId;});
-        
+        nodesArray.forEach(function (d) {d.id = +d.id; d.w = +d.w; d.currentW = 0; d.group = +d.group; data.nodes.set(d.id,d); });
+        linksArray.forEach(function (d) {d.timestamps.forEach(function(t,i){d.timestamps[i] = +d.timestamps[i];}); d.id = +d.id || idCounter++; d.sourceId = +d.sourceId; d.currentW = 0; d.targetId = +d.targetId; data.links.set(d.id,d);});
+
         return data;
     };
 
     loadData = function (data) {
-        var nodes = [],
-            links = [],
-            nodesId = [],
-            linksId = [],
-            tenth = Math.floor(data.length / 10);
+        var nodes = d3.map(), // The Key is the node id and the Value is the node
+            links = d3.map(), // The Key is the link id and the Value is the link ; note that LINKS ARE NOT ORIENTED
+            tempLinks = d3.map(), // The Key is a string : 'lowestNodeId-highestNodeId' and the Value is the link id ==> This allow to search the map with ids of the nodes
+            nodesExist = [], // To save is a node with id1 and a node with id2 already exist in the 'map' or not.
+            linkKey, // To get the id of the link (if it exists) in the temporary 'map': tempLinks
+            newNode, // To create new nodes 
+            newLink, // To create new links
+            sourceId, // To save the lowestNodeId
+            targetId, // To save the highestNodeId
+            tenth = Math.floor(data.length / 10); // To display percentage each ten percent
         
-        //LINKS ARE NOT ORIENTED
-        log("Computing data...", true);
+        log("Loading data...", true);
         data.forEach(function(d,i){
-            nodesId = nodes.map(function (d) {return d.id;});
-            linksId = links.map(function (d) {return (d.sourceId + "-" + d.targetId);});
-            var indexNodes = [nodesId.indexOf(d.id1),nodesId.indexOf(d.id2)];
-            var indexLinks = [linksId.indexOf(d.id1 + "-" + d.id2),linksId.indexOf(d.id2 + "-" + d.id1)];
+            sourceId = d.id1 < d.id2 ? d.id1 : d.id2;
+            targetId = d.id1 < d.id2 ? d.id2 : d.id1;
+            nodesExist = [nodes.has(d.id1), nodes.has(d.id2)];
+            linkKey = tempLinks.get(sourceId + "-" + targetId);
             
-            if(i%tenth === 0 && tenth >= 10)
+            if (i%tenth === 0 && tenth >= 10) {
                 log(Math.floor(i/tenth)*10 + "% loaded over " + data.length, true);
+            }
             
             for(var j = 0 ; j < 2 ; j++){
-                if (indexNodes[j] >= 0) {
-                    nodes[indexNodes[j]].w += 1;
+                if (nodesExist[j]) {
+                    nodes.get(d["id" + (j+1)]).w += 1;
                 }
                 else {
-                    var newNode = {
-                        id : d["id"+(j+1)],
+                    newNode = {
+                        id : d["id" + (j+1)],
                         group : d.group || 0,
                         w : 1,
                         currentW : 0
                     };
-                    nodes.push(newNode);
+                    nodes.set(newNode.id, newNode);
                 }
             }
             
-            
-            if (indexLinks[0] >= 0) {
-                if(links[indexLinks[0]].timestamps.indexOf(d.timestamp) === -1)
-                    links[indexLinks[0]].timestamps.push(d.timestamp);
-            }
-            else if (indexLinks[1] >= 0){
-                if(links[indexLinks[1]].timestamps.indexOf(d.timestamp) === -1)
-                    links[indexLinks[1]].timestamps.push(d.timestamp);
-            }
-            else {
-                var newLink = {
-                    sourceId : d.id1,
-                    targetId : d.id2,
+            if (linkKey !== undefined) {
+                if(links.get(linkKey).timestamps.indexOf(d.timestamp) === -1)
+                    links.get(linkKey).timestamps.push(d.timestamp);
+            } else {
+                newLink = {
+                    sourceId : sourceId,
+                    source : nodes.get(sourceId),
+                    targetId : targetId,
+                    target : nodes.get(targetId),
                     timestamps : [d.timestamp],
                     id : idCounter++,
                     currentW : 0
                 };
-                links.push(newLink);
+                tempLinks.set(newLink.sourceId + "-" + newLink.targetId, newLink.id);
+                links.set(newLink.id, newLink);
             }
         });
-        
-        nodesId = nodes.map(function (d) {return d.id;});
-        
-        links.forEach(function (d) {
-            d.source = nodesId.indexOf(d.sourceId);
-            d.target = nodesId.indexOf(d.targetId);
-            d.timestamps.sort(function(a, b) {
+                
+        links.forEach(function (k, v) {
+            v.timestamps.sort(function(a, b) {
                 return a - b;
             });
         });
-        
-        maxW = d3.max(nodes, function (d) {return d.w;});
-        
+                
         return {nodes : nodes, links : links};
     };
     
