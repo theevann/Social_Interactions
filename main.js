@@ -116,14 +116,11 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
         log("Initializing...", true);
 
-        //If you want to group people by group !
-        if (useGroup) {
-            computedData.nodes.values().forEach(function (d) {
-                if (groups.indexOf(d.group) === -1) {
-                    groups.push(d.group);
-                }
-            });
-        }
+        computedData.nodes.values().forEach(function (d) {
+            if (groups.indexOf(d.group) === -1) {
+                groups.push(d.group);
+            }
+        });
 
         d3.select("#graph").selectAll("svg").remove();
         svg = d3.select("#graph").append("svg")
@@ -424,7 +421,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     };
 
     computeSettings = function (numberOfTimestamps) {
-        if (numberOfTimestamps === undefined || true) {
+        if (numberOfTimestamps === undefined) {
             var allTimestamps = d3.set();
             computedData.links.forEach(function(k, v) {
                 v.timestamps.forEach(function(d) {
@@ -432,7 +429,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
                 });
             });
             numberOfTimestamps = allTimestamps.size();
-            allTimestamps = [];
+            allTimestamps = null;
         }
         step = (maxTS - minTS) / (numberOfTimestamps - 1);
         windowSize = 50 * step;
@@ -555,7 +552,9 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
     setGroup = function (_) {
         useGroup = _;
-        if (!useGroup) {
+        if (useGroup) {
+            node.selectAll("circle").style("fill", function (d) {return color(d.group);});
+        } else {
             node.selectAll("circle").style("fill", null);
         }
         update(false);
