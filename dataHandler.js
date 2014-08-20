@@ -99,10 +99,13 @@ var csv = true,
             newLink, // To create new links
             sourceId, // To save the lowestNodeId
             targetId, // To save the highestNodeId
+            allTimestamps = d3.set(),       
             tenth = Math.floor(data.length / 10); // To display percentage each ten percent
         
         log("Loading data...", true);
         data.forEach(function(d,i){
+            allTimestamps.add(d.timestamp);
+
             sourceId = d.id1 < d.id2 ? d.id1 : d.id2;
             targetId = d.id1 < d.id2 ? d.id2 : d.id1;
             nodesExist = [nodes.has(d.id1), nodes.has(d.id2)];
@@ -151,7 +154,7 @@ var csv = true,
             });
         });
                 
-        return {nodes : nodes, links : links};
+        return {nodes : nodes, links : links, allTimestamps : allTimestamps.size()};
     };
     
     log = function(message, higherPriority){

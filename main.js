@@ -1,15 +1,28 @@
 ﻿/*
+ * V 0.2.0
+ */
+
+/*
  * These are global functions you can call from index.html or the console
  *
  * name // explanation - arguments type
  */
 
 var init, // Call it only once (with the filepath as arguments) at the beggining to load the data - String, String
-    showGlobal, //Show graph for all time
     nextStep, // Trigger the next step computation & pause animation
     start, // Launch animation from the current Time
     restart, // Launch animation from the beggining of timesteps
     pause, // Pause animation
+    update, // Update the animation (does not compute next step)
+    computeSettings, // Find automatically good settings
+    
+    //PROBABILITY
+    showGlobal, //Show graph for all time
+    spreadIdeaFrom,
+    initProbability,
+    clearProbability,
+    
+    //SETTERS
     setAnimationStep, // Set animation step : in real life - Integer
     setTimeStep, // Set time step : in the read file - Integer
     setStyle, // Set the style - String ('normal' or 'dark')
@@ -21,8 +34,8 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     setAnimationOnChanging, // Circle popping when apparition/disparition - Boolean
     setWindowSize; // Set the time-window size - Integer
 
-(function(){
-
+(function () {
+    'use strict';
     //You may specify a csv header if your csv doesn't have one : It must contains the variables 'id1', 'id2', 'timestamp' ; default is:
     //csvHeader = "timestamp,id1,id2"
     csvHeader = '';
@@ -35,7 +48,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     var width = parseFloat(d3.select("#graph").style("width")),
         height = parseFloat(d3.select("#graph").style("height")),
         style = 'normal', // For now : 'normal' and 'dark'
-        
+
         minLinkDistance = 200, // In pixel
         maxLinkDistance = 400, // In pixel
 
@@ -44,6 +57,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         maxNodeSize = 56, // In pixel
         minNodeSize = 5, // In pixel
         poppingCircleSize = 75, // In pixel
+        
         threshold = 0.7, // 0 : show all links / 1 : show no link
         spreadingThreshold = 0.1,
 
@@ -51,7 +65,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         currentTime = 0, // Beginning of the time-window
         step = 10,   // Step time the time-window is moving
         windowSize = 10, // TIME-Window size
-        autosettings = true,
+        autosettings = true, // Find automatically good settings
 
         //Color by group if there is a group attribute,or use image
         useGroup = false,
@@ -62,7 +76,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         animate = false, // To start animation
         animationStep = 1000, // Time in ms between each update of the time window (i.e between each currentTime = currentTime + step)
         animationOnChanging = true, // Show a circle widening/shrinking to the position of the created/removed node
-        showClock = true;
+        showClock = true,
 
         startingTimeSec = 8 * 3600; // Effective time the conference started (just used by the clock)
 
@@ -71,17 +85,22 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     *   written by Evann Courdier
     */
 
-    //Program variables - do not touch
-    var computedData, node, newNode, link, groups = [], svg, force, clock, minTS, maxTS, timeout;
-    var color = d3.scale.category10();
-
-    var currentNodeMaxWeight = 0,
+    //Program private variables - do not touch
+    var computedData, node, newNode, link, svg, force, clock, minTS, maxTS, timeout,
+        color = d3.scale.category10(),
+        currentNodeMaxWeight = 0,
         currentLinkMaxWeight = 0,
         currentNodes = d3.map(), // Nodes in window
         currentLinks = d3.map(), // Links in window
+        groups = [], // To store all type of existing groups
         displayedLinks = []; // Links actually displayed (some are not due to threshold)
 
-    init = function(filePaths){
+    // Program private functions
+    var getNodeSize, updateCurrentData, computeNormalizedLinkWeight,
+        buildTree;
+        
+    
+    init = function (filePaths) {
         var data;
         data = (filePaths instanceof Array) ? getLoadedData(filePaths) : getData(filePaths); // Load file(s)
 
@@ -91,19 +110,18 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
         //If user wants settings to be sets automatically : useful for a first time use of a dataset
         if (autosettings) {
-            log("Finding good settings...",true)
-            step = computeStep();
-            windowSize = 50 * step;
-            currentTime = minTS - windowSize;
+            log("Finding good settings...",true);
+            computeSettings(computedData.allTimestamps);
         }
-        
-        log("Initializing...",true)
-        
+
+        log("Initializing...", true);
+
         //If you want to group people by group !
         if (useGroup) {
-            computedData.nodes.values().forEach(function(d) {
-                if(groups.indexOf(d.group) === -1)
+            computedData.nodes.values().forEach(function (d) {
+                if (groups.indexOf(d.group) === -1) {
                     groups.push(d.group);
+                }
             });
         }
 
@@ -134,7 +152,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         force.on("tick", function(e) {
 
             if (useGroup) {
-                //var t1 = new Date().getTime();
+
                 var centers = [], center, j, reduction = 0.2 * e.alpha;
 
                 // Calcul of barycentre
@@ -170,13 +188,18 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
             node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
         });
-        
+
         //Set desired style
         setStyle(style);
     };
 
-    var update = function () {
-        
+    update = function (moveWindow) {
+
+        //Move the window
+        if (moveWindow) {
+            currentTime += step;
+        }
+
         //Update the currentLinks and currentNodes variables with the new window
         updateCurrentData(currentTime, (currentTime + windowSize), computedData);
 
@@ -190,18 +213,15 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             clock.text("Day " + day + "  " + hour + ":" + (min < 10 ? "0" : "") + min + ":" + (sec < 10 ? "0" : "") + sec);
         }
 
-        //Move the window
-        currentTime += step;
-        
-        
+
         // ###### Updating Force gravity ######
         //force.gravity(0.1 + currentNodes.size() / 50 * 0.13 - 0.03 * displayedLinks.size() / ((currentNodes.size()) * (currentNodes.size() - 1)));
         force.gravity(0.1 + currentNodes.size() / 50 * 0.12);
 
-        
-        
-        // ###### Updating Links ###### 
-        
+
+
+        // ###### Updating Links ######
+
         link = link.data(displayedLinks, function(d) {return d.id;});
 
         link.enter().insert("line", ".node")
@@ -211,13 +231,13 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
         link.exit().remove();
 
-        
-        
+
+
         // ###### Updating Nodes ######
-        
+
         // === Existing Nodes ===
         //Updating nodes data
-        node = node.data(currentNodes.values(), function(d) {return d.id;});
+        node = node.data(currentNodes.values(), function (d) {return d.id;});
 
         //Updating nodes size
         node
@@ -225,7 +245,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             .transition()
             .duration(60)
             .attr("r", function (d) {return (getNodeSize(d) / 2) * (useGroup ? 0.9 : 1); });
-        
+
         //Updating images size (if needed)
         if (useImage) {
             node
@@ -237,14 +257,14 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
                 .attr("width", getNodeSize)
                 .attr("height", getNodeSize);
         }
-        
+
         //005.1 int
         //Updating texts content and position
         node.selectAll("text")
             .attr("dx", function (d) {return 5 + getNodeSize(d) / 2; })
-            .text(function(d) { return (d.name || d.id) + " (" + d.currentW + ")"; });
-        
-        
+            .text(function (d) { return (d.name || d.id) + " (" + d.currentW + ")"; });
+
+
         // === New Nodes ===
         newNode = node.enter();
 
@@ -261,7 +281,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         if (useGroup) {
             newNode.selectAll("circle").style("fill", function (d) {return color(d.group);});
         }
-    
+
         if (useImage) {
             newNode
                 .append("image")
@@ -312,7 +332,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         force
             .nodes(currentNodes.values())
             .links(displayedLinks);
-        
+
         //Restart it
         force.start();
 
@@ -324,21 +344,18 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         //Launch the next step
         if(animate){
             timeout = setTimeout(
-                function() { update(); },
+                function() { update(true); },
                 animationStep
             );
         }
     };
 
-    var getNodeSize = function(d){
+    getNodeSize = function (d) {
         return minNodeSize + d.currentW / currentNodeMaxWeight * (maxNodeSize - minNodeSize);
     };
 
-    var updateCurrentData = function (startTime, endTime, allData) { // TO DO : update link weight too
+    updateCurrentData = function (startTime, endTime, allData) { // TO DO : update link weight too
         var linkExist,
-            n1 = 0,
-            n2 = 0,
-            idx = 0,
             newNode = {},
             changingW = 0;
 
@@ -356,7 +373,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
                     currentNodes.set(newNode.id, newNode);
                     log("Node created : " + v.sourceId);
                 }
-                
+
                 if (!currentNodes.has(v.targetId)) {
                     newNode = allData.nodes.get(v.targetId);
                     currentNodes.set(newNode.id, newNode);
@@ -400,45 +417,45 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         });
     };
 
-    var computeNormalizedLinkWeight = function (link) {
+    computeNormalizedLinkWeight = function (link) {
         var nodesValue = (link.source.currentW + link.target.currentW) / (2 * currentNodeMaxWeight);
         var linkValue = link.currentW / currentLinkMaxWeight;
         return (linkValue + nodesValue) / 2;
     };
 
-    var computeStep = function () {
-        var allTimestamps = [];
-
-        computedData.links.forEach(function(k, v) {
-            v.timestamps.forEach(function(d) {
-                if(allTimestamps.indexOf(d) === -1)
-                    allTimestamps.push(d);
+    computeSettings = function (numberOfTimestamps) {
+        if (numberOfTimestamps === undefined || true) {
+            var allTimestamps = d3.set();
+            computedData.links.forEach(function(k, v) {
+                v.timestamps.forEach(function(d) {
+                    allTimestamps.add(d);
+                });
             });
-        });
-
-        step = (maxTS - minTS) / (allTimestamps.length - 1);
-        allTimestamps = [];
-        return step;
+            numberOfTimestamps = allTimestamps.size();
+            allTimestamps = [];
+        }
+        step = (maxTS - minTS) / (numberOfTimestamps - 1);
+        windowSize = 50 * step;
+        currentTime = minTS - windowSize;
     };
 
     /*
-    * Probability
+    * Probability functions
     */
 
     showGlobal = function () {
         pause();
-        step = 0;
         currentTime = minTS;
         windowSize = maxTS - minTS;
-        update();
+        update(false);
     };
-    
-    var buildTree = function () {      
+
+    buildTree = function () {
         currentLinks.forEach( function (k, v) {
             if (v.source.linksId.indexOf(v.id) === -1) {
                 v.source.linksId.push(v.id);
             }
-            
+
             if (v.target.linksId.indexOf(v.id) === -1) {
                 v.target.linksId.push(v.id);
             }
@@ -448,9 +465,8 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
     spreadIdeaFrom = function (id, spThreshold) {
         spreadingThreshold = spThreshold || spreadingThreshold;
         var node_ = currentNodes.get(id),
-            link_ = null,
-            targetId;
-        
+            link_ = null;
+
         node_.visited = true;
         node.filter( function (d) {return d.id === node_.id;}).classed("nodeVisited",true);
         node_.linksId.forEach( function (d) {
@@ -463,42 +479,42 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
             }
         });
     };
-    
+
     initProbability = function (global) {
         if(global)
             showGlobal();
         else
             pause();
-        
+
         clearProbability(true);
-        
+
         buildTree();
-    }
-    
+    };
+
     clearProbability = function (clearTree) {
         computedData.nodes.forEach( function (k, v) {
             if (clearTree)
                 v.linksId = [];
             v.visited = false;
-        }); 
-        
+        });
+
         node.classed("nodeVisited", false);
         link.classed("linkVisited", false);
-    }
-    
+    };
+
     /*
     * Animation controls
     */
 
     start = function () {
         animate = true;
-        update();
+        update(false);
     };
 
     restart = function () {
         currentTime = minTS - windowSize;
         animate = true;
-        update();
+        update(false);
     };
 
     pause = function () {
@@ -508,7 +524,7 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
     nextStep = function () {
         pause();
-        update();
+        update(true);
     };
 
     /*
@@ -517,8 +533,9 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
 
     setThreshold = function (_) {
         threshold = _;
+        update(false);
     };
-    
+
     setLog = function (_) {
         if(_ === false) {
             showLog = false;
@@ -528,24 +545,22 @@ var init, // Call it only once (with the filepath as arguments) at the beggining
         } else {
             logLevel = 'limited';
         }
-        
-    }
-    
+    };
+
     setStyle = function (_) {
         style = _;
         node.selectAll('image').attr("xlink:href", imagePath[style]);
-        d3.select("body").attr("class",_)
-    }
-    
+        d3.select("body").attr("class",_);
+    };
+
     setGroup = function (_) {
         useGroup = _;
-        if (useGroup) {
-            node.selectAll("circle").style("fill", function (d) {return color(d.group);});
-        } else {
+        if (!useGroup) {
             node.selectAll("circle").style("fill", null);
         }
+        update(false);
     };
-    
+
     setSpreadingThreshold = function (_) {
         spreadingThreshold = _;
     };
