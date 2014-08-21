@@ -261,7 +261,7 @@ var load, // Call it only once (with the filepath as arguments) at the beggining
             .attr("r", function (d) {return (getNodeSize(d) / 2) * (conf.useGroup ? 0.9 : 1); });
 
         if (conf.useGroup) {
-            newNode.selectAll("circle").conf.style("fill", function (d) {return color(d.group);});
+            newNode.selectAll("circle").style("fill", function (d) {return color(d.group);});
         }
 
         if (conf.useImage) {
@@ -297,7 +297,7 @@ var load, // Call it only once (with the filepath as arguments) at the beggining
                 .attr("cy", 0)
                 .attr("r", conf.poppingCircleSize)
                 .attr("opacity",0)
-                .transition().duration(transitionTime)
+                .transition().duration(conf.animationStep < transitionTime ?  conf.animationStep : transitionTime)
                 .attr("r", 0)
                 .attr("opacity",0.7)
                 .each("end", function() {
@@ -495,7 +495,7 @@ var load, // Call it only once (with the filepath as arguments) at the beggining
         conf.animationOnChanging = true; // Show a circle widening/shrinking to the position of the created/removed node
         conf.showClock = true;
 
-        conf.startingTimeSec = 8 * 3600; // Effective time the conference started (just used by the clock)
+        conf.startingTimeSec = 0; // Effective time the conference started - Will be considered as the 0 of the datafile (just used by the clock)
 
         return conf;
     };
@@ -626,9 +626,9 @@ var load, // Call it only once (with the filepath as arguments) at the beggining
     setGroup = function (_) {
         conf.useGroup = _;
         if (conf.useGroup) {
-            node.selectAll("circle").conf.style("fill", function (d) {return color(d.group);});
+            node.selectAll("circle").style("fill", function (d) {return color(d.group);});
         } else {
-            node.selectAll("circle").conf.style("fill", null);
+            node.selectAll("circle").style("fill", null);
         }
         update(false);
     };
