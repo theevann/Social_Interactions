@@ -9,18 +9,23 @@
 	</head>
 <body>
     <div id="clock" ></div>
-    <div id="graph" style="width:100%;margin:auto;height:790px"></div>
+    <div id="graph" style="width:100%;margin:auto;height:800px"></div>
     
     <script src="dataHandler.js"></script>
     <script src="main.js"></script>
     <script>
+    
         //*
-        //init("data/contact_list.csv");
-        init("data/ConferenceSimulation.csv");
-        /*/
-        init(["data/nodes.json","data/edges.json"]);
+        load("data/contact_list.csv","conf/contact_list.conf");
         //*/
-        restart();
+        /*
+        load("data/ConferenceSimulation.csv","conf/default.conf");
+        //*/
+        /*
+        load(["data/nodes.json","data/edges.json"],"conf/default.conf");
+        //*/
+        
+        start();
     </script>
 </body>
 <html>

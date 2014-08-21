@@ -13,13 +13,18 @@ var csv = true,
     
     getData = function (filePath) {
         var data, file;
-        log("Loading file : '" + filePath + "'",true);
-        xmlhttp = new XMLHttpRequest();
-        xmlhttp.open("GET",filePath,false);
-        xmlhttp.overrideMimeType('text/plain');
-        xmlhttp.send(null);
-        //maybe check status !=404 here
-        file = xmlhttp.responseText;
+        try {
+            log("Loading file : '" + filePath + "'",true);
+            xmlhttp = new XMLHttpRequest();
+            xmlhttp.open("GET",filePath,false);
+            xmlhttp.overrideMimeType('text/plain');
+            xmlhttp.send(null);
+            file = xmlhttp.responseText;
+        }
+        catch(err) {
+            alert("Error : File '" + filePath + "' doesn't exist", true);
+            return;
+        }
         
         csv = (/.*\.csv/.test(filePath));
         if(!csv && !/.*\.json/.test(filePath)){
@@ -58,19 +63,31 @@ var csv = true,
     
     getLoadedData = function (filePaths) {
         var data = { nodes : d3.map(), links : d3.map()}, nodesArray, linksArray, file1, file2;
-        log("Loading file : '" + filePaths[0] + "'",true);
-        var xmlhttp1 = new XMLHttpRequest();
-        xmlhttp1.open("GET",filePaths[0],false);
-        xmlhttp1.overrideMimeType('text/plain');
-        xmlhttp1.send(null);
-        file1 = xmlhttp1.responseText;
+        try {
+            log("Loading file : '" + filePaths[0] + "'",true);
+            var xmlhttp1 = new XMLHttpRequest();
+            xmlhttp1.open("GET",filePaths[0],false);
+            xmlhttp1.overrideMimeType('text/plain');
+            xmlhttp1.send(null);
+            file1 = xmlhttp1.responseText;
+        }
+        catch(err) {
+            alert("Error : File '" + filePaths[0] + "' doesn't exist", true);
+            return;
+        }
         
-        log("Loading file : '" + filePaths[1] + "'",true);
-        var xmlhttp2 = new XMLHttpRequest();
-        xmlhttp2.open("GET",filePaths[1],false);
-        xmlhttp2.overrideMimeType('text/plain');
-        xmlhttp2.send(null);
-        file2 = xmlhttp2.responseText;
+        try {
+            log("Loading file : '" + filePaths[1] + "'",true);
+            var xmlhttp2 = new XMLHttpRequest();
+            xmlhttp2.open("GET",filePaths[1],false);
+            xmlhttp2.overrideMimeType('text/plain');
+            xmlhttp2.send(null);
+            file2 = xmlhttp2.responseText;
+        }
+        catch(err) {
+            alert("Error : File '" + filePaths[1] + "' doesn't exist", true);
+            return;
+        }
         
         if(!/.*\.json/.test(filePaths[0])){
             log("The file '" + filePaths[0] + "' has not the expected json extension\nIt will be parsed as a json file",true);
